@@ -58,7 +58,14 @@
             z-index: 1;
         }
 
-        .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right {
+        /* Shift Mapbox logos/attributions to not clash with bottom controls */
+        .mapboxgl-ctrl-bottom-left {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 225px) !important;
+            left: 10px !important;
+            opacity: 0.7;
+        }
+
+        .mapboxgl-ctrl-bottom-right {
             bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
             opacity: 0.7;
         }
@@ -231,11 +238,11 @@
             display: block;
         }
 
-        /* COMPACT BOTTOM-RIGHT PARKING PANEL */
+        /* COMPACT BOTTOM-LEFT PARKING PANEL */
         .parking-side-panel {
             position: absolute;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 220px);
-            right: 16px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+            left: 16px;
             width: 220px;
             max-height: 200px;
             pointer-events: auto;
@@ -335,7 +342,7 @@
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
+            border-radius: 100px;
             padding: 8px 10px;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -865,7 +872,7 @@
 
 <!-- MAP OVERLAYS -->
 <div id="ui">
-    <!-- BOTTOM RIGHT SMALL PARKING PANEL -->
+    <!-- BOTTOM LEFT SMALL PARKING PANEL -->
     <div id="parking-side-panel" class="glass-panel parking-side-panel">
         <div id="side-panel-toggle" class="side-panel-header">
             <span>Nearest Parking</span>
