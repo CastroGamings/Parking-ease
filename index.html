@@ -8,14 +8,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Parking Ease</title>
 
-    <!-- Mapbox GL JS & CSS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Turf.js for Route Snapping & Bearing Calculation -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -58,20 +55,27 @@
             z-index: 1;
         }
 
-        /* Shift Mapbox logos/attributions to not clash with bottom controls */
-        .mapboxgl-ctrl-bottom-left {
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 225px) !important;
-            left: 10px !important;
+        /* DYNAMIC MAPBOX LOGO & ATTRIBUTION SHIFTS */
+       .mapboxgl-ctrl-bottom-right {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 10px)!important;
             opacity: 0.7;
         }
-
-        .mapboxgl-ctrl-bottom-right {
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
+       .mapboxgl-ctrl-bottom-left {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 210px)!important;
+            left: 16px!important;
+            transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1)!important;
             opacity: 0.7;
+            z-index: 10;
+        }
+        body:has(.parking-side-panel.collapsed).mapboxgl-ctrl-bottom-left {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 62px)!important;
+        }
+        body:has(.parking-side-panel.dismissed).mapboxgl-ctrl-bottom-left {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 10px)!important;
         }
 
         /* GLASS CONTAINER */
-        .glass-panel {
+       .glass-panel {
             background: var(--panel-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -100,12 +104,12 @@
             pointer-events: none;
         }
 
-        .brand-header {
+       .brand-header {
             text-align: center;
             margin-bottom: 40px;
         }
 
-        .brand-logo {
+       .brand-logo {
             width: 72px;
             height: 72px;
             background: linear-gradient(135deg, #2563eb, #3b82f6);
@@ -117,7 +121,7 @@
             box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
         }
 
-        .brand-logo svg {
+       .brand-logo svg {
             width: 40px;
             height: 40px;
             fill: #fff;
@@ -138,14 +142,14 @@
             margin-top: 6px;
         }
 
-        .search-container {
+       .search-container {
             display: flex;
             flex-direction: column;
             gap: 14px;
             width: min(440px, 100%);
         }
 
-        .search-wrap {
+       .search-wrap {
             display: flex;
             align-items: center;
             background: rgba(255, 255, 255, 0.08);
@@ -155,13 +159,13 @@
             transition: all 0.2s ease;
         }
 
-        .search-wrap:focus-within {
+       .search-wrap:focus-within {
             border-color: var(--primary-blue);
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
             background: rgba(255, 255, 255, 0.12);
         }
 
-        .search-wrap input {
+       .search-wrap input {
             flex: 1;
             background: transparent;
             border: none;
@@ -171,11 +175,11 @@
             font-weight: 500;
         }
 
-        .search-wrap input::placeholder {
+       .search-wrap input::placeholder {
             color: rgba(255, 255, 255, 0.4);
         }
 
-        .btn-primary {
+       .btn-primary {
             background: var(--primary-blue);
             color: #fff;
             border: none;
@@ -191,18 +195,18 @@
             gap: 8px;
         }
 
-        .btn-primary:active {
+       .btn-primary:active {
             transform: scale(0.97);
             background: var(--primary-blue-hover);
         }
 
-        .home-actions {
+       .home-actions {
             display: flex;
             gap: 12px;
             width: 100%;
         }
 
-        .btn-secondary {
+       .btn-secondary {
             flex: 1;
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -219,7 +223,7 @@
             transition: background 0.2s ease;
         }
 
-        .btn-secondary:active {
+       .btn-secondary:active {
             background: rgba(255, 255, 255, 0.12);
         }
 
@@ -238,63 +242,88 @@
             display: block;
         }
 
-        /* COMPACT BOTTOM-LEFT PARKING PANEL */
-        .parking-side-panel {
+        /* OPTIMIZED BOTTOM-LEFT FLOATING PARKING PANEL */
+       .parking-side-panel {
             position: absolute;
             bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
             left: 16px;
-            width: 220px;
-            max-height: 200px;
+            width: 250px;
+            max-height: 190px;
             pointer-events: auto;
             z-index: 900;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-radius: 16px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 18px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+            transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                        opacity 0.3s ease;
         }
 
-        .parking-side-panel.expanded {
-            width: 280px;
-            max-height: 380px;
+        /* COLLAPSED PANEL STATE */
+       .parking-side-panel.collapsed {
+            max-height: 42px; /* Header view boundary only */
         }
 
-        .side-panel-header {
+        /* PANEL COLLISION DISMISSAL */
+       .parking-side-panel.dismissed {
+            transform: translateX(-280px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+       .side-panel-header {
             padding: 10px 14px;
             font-size: 0.8rem;
-            font-weight: 700;
+            font-weight: 800;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.3);
-            letter-spacing: 0.02em;
+            letter-spacing: 0.03em;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
+            user-select: none;
         }
 
-        /* FILTER CHIPS ROW */
-        .filter-bar {
+        /* COLLAPSIBLE INDICATOR ARROW */
+       .panel-toggle-indicator {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.3s ease;
+            fill: none;
+            stroke: var(--text-sub);
+            stroke-width: 2.5;
+        }
+
+       .parking-side-panel.collapsed.panel-toggle-indicator {
+            transform: rotate(180deg);
+        }
+
+        /* COMPACT FILTER CHIPS ROW */
+       .filter-bar {
             display: flex;
             gap: 4px;
-            padding: 6px 8px;
+            padding: 6px 10px;
             overflow-x: auto;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.15);
-            scrollbar-width: none;
+            scrollbar-width: none; /* Firefox */
         }
 
-        .filter-bar::-webkit-scrollbar {
-            display: none;
+       .filter-bar::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
         }
 
-        .filter-chip {
+       .filter-chip {
             padding: 3px 8px;
             border-radius: 100px;
             font-size: 0.68rem;
             font-weight: 700;
             color: var(--text-sub);
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
             white-space: nowrap;
             transition: all 0.2s ease;
@@ -303,93 +332,94 @@
             gap: 4px;
         }
 
-        .filter-chip:hover {
+       .filter-chip:hover {
             background: rgba(255, 255, 255, 0.12);
             color: #fff;
         }
 
-        .filter-chip.active {
+       .filter-chip.active {
             color: #fff;
             background: rgba(37, 99, 235, 0.35);
             border-color: #2563eb;
             box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
         }
 
-        .chip-dot {
-            width: 5px;
-            height: 5px;
+       .chip-dot {
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
         }
 
-        .side-panel-content {
-            padding: 6px;
+       .side-panel-content {
+            padding: 8px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 6px;
+            max-height: calc(100% - 42px);
         }
 
-        .side-panel-content::-webkit-scrollbar {
-            width: 3px;
+       .side-panel-content::-webkit-scrollbar {
+            width: 4px;
         }
-        .side-panel-content::-webkit-scrollbar-thumb {
+       .side-panel-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 4px;
         }
 
-        .parking-item-card {
+       .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 100px;
-            padding: 8px 10px;
+            border-radius: 12px;
+            padding: 10px 12px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .parking-item-card:hover {
+       .parking-item-card:hover {
             background: rgba(255, 255, 255, 0.12);
             border-color: rgba(255, 255, 255, 0.25);
         }
 
-        .item-top {
+       .item-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
-        .item-title {
-            font-size: 0.78rem;
+       .item-title {
+            font-size: 0.82rem;
             font-weight: 700;
             color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 120px;
+            max-width: 140px;
         }
 
-        .item-dist {
-            font-size: 0.68rem;
+       .item-dist {
+            font-size: 0.72rem;
             font-weight: 700;
             color: #60a5fa;
             background: rgba(37, 99, 235, 0.2);
-            padding: 1px 5px;
-            border-radius: 4px;
+            padding: 2px 6px;
+            border-radius: 6px;
         }
 
-        .item-bottom {
+       .item-bottom {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.68rem;
+            gap: 6px;
+            font-size: 0.72rem;
             color: var(--text-sub);
         }
 
-        .item-badge {
-            width: 6px;
-            height: 6px;
+       .item-badge {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -405,7 +435,7 @@
             pointer-events: auto;
         }
 
-        .search-glass {
+       .search-glass {
             display: flex;
             align-items: center;
             padding: 6px 6px 6px 18px;
@@ -425,7 +455,7 @@
             color: var(--text-sub);
         }
 
-        .icon-btn {
+       .icon-btn {
             width: 44px;
             height: 44px;
             border-radius: 50%;
@@ -439,12 +469,12 @@
             transition: transform 0.15s ease;
         }
 
-        .icon-btn:active {
+       .icon-btn:active {
             transform: scale(0.92);
         }
 
         /* SEARCH SUGGESTIONS DROPDOWN */
-        .search-dropdown {
+       .search-dropdown {
             margin-top: 8px;
             background: var(--panel-bg);
             backdrop-filter: blur(20px);
@@ -459,11 +489,11 @@
             overflow-y: auto;
         }
 
-        .search-dropdown.show {
+       .search-dropdown.show {
             display: flex;
         }
 
-        .dropdown-item {
+       .dropdown-item {
             padding: 12px 18px;
             font-size: 0.88rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -474,27 +504,27 @@
             gap: 2px;
         }
 
-        .dropdown-item:last-child {
+       .dropdown-item:last-child {
             border-bottom: none;
         }
 
-        .dropdown-item:hover, .dropdown-item:active {
+       .dropdown-item:hover,.dropdown-item:active {
             background: rgba(37, 99, 235, 0.25);
         }
 
-        .dropdown-title-row {
+       .dropdown-title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
         }
 
-        .dropdown-title {
+       .dropdown-title {
             font-weight: 700;
             color: #fff;
         }
 
-        .dropdown-distance {
+       .dropdown-distance {
             font-size: 0.75rem;
             font-weight: 700;
             color: #60a5fa;
@@ -504,13 +534,13 @@
             border: 1px solid rgba(37, 99, 235, 0.4);
         }
 
-        .dropdown-subtitle {
+       .dropdown-subtitle {
             font-size: 0.75rem;
             color: var(--text-sub);
         }
 
         /* FAB CONTROLS */
-        .fab-group {
+       .fab-group {
             position: absolute;
             right: 16px;
             bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
@@ -521,7 +551,7 @@
             z-index: 10;
         }
 
-        .fab {
+       .fab {
             width: 52px;
             height: 52px;
             border-radius: 50%;
@@ -538,11 +568,11 @@
             transition: all 0.2s ease;
         }
 
-        .fab:active {
+       .fab:active {
             transform: scale(0.92);
         }
 
-        .fab.active {
+       .fab.active {
             background: var(--primary-blue);
             border-color: var(--primary-blue);
         }
@@ -564,7 +594,7 @@
             pointer-events: none;
         }
 
-        .leg-mini {
+       .leg-mini {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -574,11 +604,11 @@
             margin-bottom: 8px;
         }
 
-        .leg-mini:last-child {
+       .leg-mini:last-child {
             margin-bottom: 0;
         }
 
-        .dot {
+       .dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
@@ -612,7 +642,7 @@
             gap: 8px;
         }
 
-        .spinner {
+       .spinner {
             width: 14px;
             height: 14px;
             border: 2px solid rgba(255, 255, 255, 0.3);
@@ -626,7 +656,7 @@
         }
 
         /* POPUPS & CARDS */
-        .bottom-card {
+       .bottom-card {
             position: absolute;
             bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
             left: 50%;
@@ -638,7 +668,7 @@
             animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .bottom-card.show {
+       .bottom-card.show {
             display: block;
         }
 
@@ -647,7 +677,7 @@
             to { opacity: 1; transform: translate(-50%, 0); }
         }
 
-        .card-header {
+       .card-header {
             padding: 16px 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
@@ -655,13 +685,13 @@
             justify-content: space-between;
         }
 
-        .card-title-group {
+       .card-title-group {
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
-        .card-icon {
+       .card-icon {
             width: 40px;
             height: 40px;
             border-radius: 14px;
@@ -672,19 +702,19 @@
             justify-content: center;
         }
 
-        .card-title {
+       .card-title {
             font-size: 1rem;
             font-weight: 700;
             line-height: 1.2;
         }
 
-        .card-subtitle {
+       .card-subtitle {
             font-size: 0.75rem;
             color: var(--text-sub);
             margin-top: 2px;
         }
 
-        .card-close {
+       .card-close {
             width: 30px;
             height: 30px;
             border-radius: 50%;
@@ -697,29 +727,29 @@
             justify-content: center;
         }
 
-        .card-body {
+       .card-body {
             padding: 16px 20px;
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .info-row {
+       .info-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 0.88rem;
         }
 
-        .info-label {
+       .info-label {
             color: var(--text-sub);
         }
 
-        .info-value {
+       .info-value {
             font-weight: 600;
         }
 
-        .badge {
+       .badge {
             padding: 4px 10px;
             border-radius: 100px;
             font-size: 0.75rem;
@@ -764,13 +794,13 @@
         }
 
         /* STANDARD LOCATION DOT MARKER */
-        .player-marker {
+       .player-marker {
             width: 32px;
             height: 32px;
             position: relative;
         }
 
-        .player-pulse {
+       .player-pulse {
             position: absolute;
             inset: -8px;
             border-radius: 50%;
@@ -783,7 +813,7 @@
             50% { transform: scale(1.6); opacity: 0; }
         }
 
-        .player-dot {
+       .player-dot {
             width: 100%;
             height: 100%;
             background: #2563eb;
@@ -795,7 +825,7 @@
         }
 
         /* SAT NAV ARROW MARKER */
-        .satnav-arrow-wrapper {
+       .satnav-arrow-wrapper {
             width: 44px;
             height: 44px;
             display: flex;
@@ -804,7 +834,7 @@
             transition: transform 0.2s ease-out;
         }
 
-        .satnav-arrow {
+       .satnav-arrow {
             width: 0;
             height: 0;
             border-left: 10px solid transparent;
@@ -814,7 +844,7 @@
             position: relative;
         }
 
-        .satnav-arrow::after {
+       .satnav-arrow::after {
             content: '';
             position: absolute;
             top: 14px;
@@ -826,7 +856,7 @@
             border-bottom: 12px solid #0284c7;
         }
 
-        .dest-pin {
+       .dest-pin {
             width: 32px;
             height: 32px;
             background: #ef4444;
@@ -839,7 +869,6 @@
 </head>
 <body>
 
-<!-- HOME SCREEN -->
 <div id="home">
     <div class="brand-header">
         <div class="brand-logo">
@@ -867,19 +896,17 @@
     </div>
 </div>
 
-<!-- MAP CANVAS -->
 <div id="map"></div>
 
-<!-- MAP OVERLAYS -->
 <div id="ui">
-    <!-- BOTTOM LEFT SMALL PARKING PANEL -->
     <div id="parking-side-panel" class="glass-panel parking-side-panel">
-        <div id="side-panel-toggle" class="side-panel-header">
-            <span>Nearest Parking</span>
-            <span id="expand-icon" style="font-size: 0.7rem; opacity: 0.7;">▲</span>
+        <div class="side-panel-header" id="panel-header">
+            <span>Nearest Parking Zones</span>
+            <svg class="panel-toggle-indicator" viewBox="0 0 24 24">
+                <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
         </div>
         
-        <!-- PARKING TYPE FILTER BAR -->
         <div class="filter-bar">
             <button class="filter-chip active" data-filter="all">All</button>
             <button class="filter-chip" data-filter="free"><span class="chip-dot" style="background:var(--color-free)"></span>Free</button>
@@ -890,7 +917,7 @@
         </div>
 
         <div id="side-panel-content" class="side-panel-content">
-            <div style="font-size: 0.7rem; color: var(--text-sub); text-align: center; padding: 8px;">
+            <div style="font-size: 0.7rem; color: var(--text-sub); text-align: center; padding: 10px;">
                 Searching location...
             </div>
         </div>
@@ -911,7 +938,7 @@
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close">✕</button>
+            <button id="dest-cancel-btn" class="card-close"></button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -952,13 +979,13 @@
     <div id="parking-card" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon">🅿️</div>
+                <div class="card-icon"></div>
                 <div>
                     <div id="card-title" class="card-title">Unknown Road</div>
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close">✕</button>
+            <button id="card-close-btn" class="card-close"></button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -983,7 +1010,7 @@
     <div id="nav-panel" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon">🚘</div>
+                <div class="card-icon"></div>
                 <div>
                     <div id="nav-dest-name" class="card-title">Selected Point</div>
                     <div class="card-subtitle">Calculated Route Details</div>
@@ -1014,7 +1041,6 @@
 <script>
 const TOKEN = "pk.eyJ1IjoiY2Nhc3NpbmdlbmEiLCJhIjoiY21wNnNwN3dxMDJ2bjJwczlrM2VqYng4ZSJ9.nBfFJdM7J3aNhAhPawLS8w";
 mapboxgl.accessToken = TOKEN;
-
 const COLORS = {
     free: "#22c55e",
     paid: "#f97316",
@@ -1022,7 +1048,6 @@ const COLORS = {
     restricted: "#ef4444",
     hgv: "#8b5cf6"
 };
-
 let map = null;
 let playerMarker = null;
 let playerCoords = null;
@@ -1036,16 +1061,15 @@ let activeRouteGeoJSON = null;
 let searchDebounceTimeout = null;
 let selectedCardCoords = null;
 let selectedCardName = "";
-
 // Side panel cache & filter state
-let cachedParkingFeatures = [];
+let cachedParkingFeatures =;
 let activeFilter = "all";
 
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
     const R = 3958.8; // Radius of Earth in miles
     const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
-    const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+    const dLon = (coord2 - coord1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
               Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
               Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -1056,7 +1080,7 @@ function calculateDistanceMiles(coord1, coord2) {
 /* PARKING LAYERS VISIBILITY */
 function setParkingLayersVisibility(visible) {
     if (!map) return;
-    const visibility = visible ? 'visible' : 'none';
+    const visibility = visible? 'visible' : 'none';
     
     Object.keys(COLORS).forEach(status => {
         const layerId = `layer-${status}`;
@@ -1064,7 +1088,6 @@ function setParkingLayersVisibility(visible) {
             map.setLayoutProperty(layerId, 'visibility', visibility);
         }
     });
-
     if (map.getLayer('lots-fill')) {
         map.setLayoutProperty('lots-fill', 'visibility', visibility);
     }
@@ -1088,23 +1111,21 @@ function buildArrowMarkerEl() {
 }
 
 function updateMarkerElement() {
-    if (!map || !playerCoords) return;
-    
+    if (!map ||!playerCoords) return;
     if (playerMarker) {
         playerMarker.remove();
         playerMarker = null;
     }
 
-    const el = navActive ? buildArrowMarkerEl() : buildDotMarkerEl();
+    const el = navActive? buildArrowMarkerEl() : buildDotMarkerEl();
     playerMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat(playerCoords)
-        .addTo(map);
+       .setLngLat(playerCoords)
+       .addTo(map);
 }
 
 function placePlayerMarker(coords, heading = 0) {
     if (!map) return;
     playerCoords = coords;
-
     if (!playerMarker) {
         updateMarkerElement();
     } else {
@@ -1119,7 +1140,7 @@ function placePlayerMarker(coords, heading = 0) {
 
 /* ROUTE SNAPPING & BEARING MATH */
 function processSnapToRoute(rawCoords, deviceHeading) {
-    if (!navActive || !activeRouteGeoJSON || !window.turf) {
+    if (!navActive ||!activeRouteGeoJSON ||!window.turf) {
         return { snappedCoords: rawCoords, heading: deviceHeading };
     }
 
@@ -1130,7 +1151,7 @@ function processSnapToRoute(rawCoords, deviceHeading) {
         const snapped = turf.nearestPointOnLine(routeLine, rawPt);
         const snappedCoords = snapped.geometry.coordinates;
 
-        const distanceAlong = snapped.properties.location; 
+        const distanceAlong = snapped.properties.location;
         const aheadPt = turf.along(routeLine, distanceAlong + 0.015, { units: 'kilometers' });
         
         let calculatedHeading = turf.bearing(snapped, aheadPt);
@@ -1154,8 +1175,8 @@ function placeDestMarker(coords) {
         const el = document.createElement('div');
         el.className = 'dest-pin';
         destMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-            .setLngLat(coords)
-            .addTo(map);
+           .setLngLat(coords)
+           .addTo(map);
     } else {
         destMarker.setLngLat(coords);
     }
@@ -1168,15 +1189,15 @@ function removeDestMarker() {
 
 /* ROUTING API & DRAWING */
 async function fetchRoute(from, to) {
-    const coords = `${from[0]},${from[1]};${to[0]},${to[1]}`;
+    const coords = `${from},${from[1]};${to},${to[1]}`;
     const params = `geometries=geojson&overview=full&access_token=${TOKEN}`;
     try {
-        const [walkRes, driveRes] = await Promise.all([
+        const = await Promise.all([
             fetch(`https://api.mapbox.com/directions/v5/mapbox/walking/${coords}?${params}`),
             fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?${params}`)
         ]);
-        const [walkData, driveData] = await Promise.all([walkRes.json(), driveRes.json()]);
-        return { walk: walkData.routes?.[0] || null, drive: driveData.routes?.[0] || null };
+        const = await Promise.all();
+        return { walk: walkData.routes?. || null, drive: driveData.routes?. || null };
     } catch (e) {
         console.error("Routing failed", e);
         return { walk: null, drive: null };
@@ -1192,13 +1213,11 @@ function drawRoute(geojsonGeom) {
         map.getSource('route').setData(data);
     } else {
         map.addSource('route', { type: 'geojson', data });
-
         map.addLayer({
             id: 'route-bg', type: 'line', source: 'route',
             layout: { 'line-cap': 'round', 'line-join': 'round' },
             paint: { 'line-color': '#0284c7', 'line-width': 12, 'line-opacity': 0.7 }
         });
-
         map.addLayer({
             id: 'route-line', type: 'line', source: 'route',
             layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -1216,20 +1235,18 @@ function clearRoute() {
 
 /* STRICT LOCAL POI / STORE SEARCH & SORTING */
 async function fetchPlaces(query) {
-    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
-    const prox = `${origin[0]},${origin[1]}`;
-
+    const origin = playerCoords || (map? map.getCenter().toArray() : [-0.1276, 51.5072]);
+    const prox = `${origin},${origin[1]}`;
     try {
         const placeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&types=place,locality,district,postcode&proximity=${prox}&country=gb&limit=5`;
         const placeRes = await fetch(placeUrl);
         const placeData = await placeRes.json();
-        let features = placeData.features || [];
-
+        let features = placeData.features ||;
         if (features.length === 0) {
             const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&types=poi,address&proximity=${prox}&country=gb&limit=5`;
             const fallbackRes = await fetch(fallbackUrl);
             const fallbackData = await fallbackRes.json();
-            features = fallbackData.features || [];
+            features = fallbackData.features ||;
         }
 
         features.forEach(f => {
@@ -1239,13 +1256,12 @@ async function fetchPlaces(query) {
                 f._distMiles = 99999;
             }
         });
-
         features.sort((a, b) => a._distMiles - b._distMiles);
 
         return features;
     } catch (e) {
         console.error("Geocoding error", e);
-        return [];
+        return;
     }
 }
 
@@ -1304,7 +1320,6 @@ async function renderDestDropdown(query) {
             selectDestination(feat);
             hideDestDropdown();
         });
-
         dropdown.appendChild(item);
     });
 
@@ -1314,12 +1329,11 @@ async function renderDestDropdown(query) {
 async function selectDestination(feature) {
     document.getElementById('dest-input').value = feature.text || feature.place_name;
     const coords = feature.center;
-
     startRoutingToCoords(coords, feature.place_name);
 }
 
 async function startRoutingToCoords(coords, name) {
-    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
+    const origin = playerCoords || (map? map.getCenter().toArray() : [-0.1276, 51.5072]);
 
     placeDestMarker(coords);
     document.getElementById('nav-dest-name').textContent = name;
@@ -1327,11 +1341,9 @@ async function startRoutingToCoords(coords, name) {
     document.getElementById("loader").classList.add("show");
     const routes = await fetchRoute(origin, coords);
     document.getElementById("loader").classList.remove("show");
-
     if (routes.drive || routes.walk) {
         const driveRoute = routes.drive;
         const walkRoute = routes.walk;
-        
         if (driveRoute) {
             drawRoute(driveRoute.geometry);
             const miles = (driveRoute.distance * 0.000621371).toFixed(1);
@@ -1346,10 +1358,15 @@ async function startRoutingToCoords(coords, name) {
         bounds.extend(origin);
         bounds.extend(coords);
         map.fitBounds(bounds, { padding: 80 });
-
         document.getElementById('parking-card').classList.remove('show');
         document.getElementById('nav-panel').classList.add('show');
         document.getElementById('dest-bar').classList.remove('show');
+
+        // DISMISS PARKING PANEL TO PREVENT OVERLAP DURING ROUTE PREVIEW
+        const panel = document.getElementById("parking-side-panel");
+        if (panel) {
+            panel.classList.add("dismissed");
+        }
     } else {
         alert("Unable to calculate route.");
     }
@@ -1361,10 +1378,9 @@ async function handleDestinationSubmit() {
 
     hideDestDropdown();
     document.getElementById('dest-input').blur();
-
     const features = await fetchPlaces(val);
     if (features.length > 0) {
-        selectDestination(features[0]);
+        selectDestination(features);
     } else {
         alert("Location or store not found.");
     }
@@ -1372,25 +1388,24 @@ async function handleDestinationSubmit() {
 
 /* PARKING LOGIC */
 function classifyParking(tags) {
+    // 1. Check HGV designation first
     if (
         tags.hgv === "designated" || tags.hgv === "yes" ||
         tags.truck === "yes" || tags["parking:hgv"] === "yes" ||
         tags["parking:hgv"] === "designated" || tags["hgv:parking"] === "yes" ||
         tags.amenity === "truck_parking"
     ) return "hgv";
-
+    // 2. Check strict NO PARKING / NO WAITING AT ALL TIMES (Red - Restricted)
     const hasDoubleYellowLine = 
         tags['parking:lane:both:yellow_line'] === 'double' ||
         tags['parking:lane:left:yellow_line'] === 'double' ||
         tags['parking:lane:right:yellow_line'] === 'double' ||
         tags['parking:lane:yellow_line'] === 'double';
-
     const isStrictlyRestricted = (val) => {
         if (!val) return false;
         const v = val.toLowerCase();
         return v === 'no_parking' || v === 'no_stopping' || v === 'prohibited';
     };
-
     const hasRestrictedLane = 
         isStrictlyRestricted(tags['parking:lane:both']) ||
         isStrictlyRestricted(tags['parking:lane:left']) ||
@@ -1404,18 +1419,18 @@ function classifyParking(tags) {
 
     const hasStrictGeneralRestriction = 
         tags['restriction'] === 'no_parking' ||
-        tags['clearway'] !== undefined;
+        tags['clearway']!== undefined;
 
     if (hasDoubleYellowLine || hasRestrictedLane || hasStrictGeneralRestriction) {
         return "restricted";
     }
 
+    // 3. Check for TIMED / PERMIT / RESTRICTED TIME PARKING (Yellow Marker)
     const hasSingleYellowLine = 
         tags['parking:lane:both:yellow_line'] === 'single' ||
         tags['parking:lane:left:yellow_line'] === 'single' ||
         tags['parking:lane:right:yellow_line'] === 'single' ||
         tags['parking:lane:yellow_line'] === 'single';
-
     const isPermitOrTimedValue = (val) => {
         if (!val) return false;
         const v = val.toLowerCase();
@@ -1440,8 +1455,8 @@ function classifyParking(tags) {
         isPermitOrTimedValue(tags['parking:left:access']) ||
         isPermitOrTimedValue(tags['parking:right:access']) ||
         tags['restriction'] === 'no_waiting' ||
-        tags['waiting_restrictions'] !== undefined ||
-        tags['no_waiting'] !== undefined;
+        tags['waiting_restrictions']!== undefined ||
+        tags['no_waiting']!== undefined;
 
     const hasTimedAttributes = 
         tags.maxstay ||
@@ -1457,15 +1472,16 @@ function classifyParking(tags) {
         return "timed";
     }
 
+    // 4. Paid parking
     if (
         tags.fee === "yes" || 
         tags['parking:lane:both'] === 'paid' || tags['parking:lane:left'] === 'paid' || tags['parking:lane:right'] === 'paid' ||
         tags['parking:condition:both'] === 'paid' || tags['parking:condition:left'] === 'paid' || tags['parking:condition:right'] === 'paid' ||
         tags['parking:both:fee'] === 'yes' || tags['parking:left:fee'] === 'yes' || tags['parking:right:fee'] === 'yes'
     ) return "paid";
-
+    
+    // 5. Major thoroughfares & private roads
     if (["motorway", "trunk", "primary"].includes(tags.highway) || tags.access === 'private' || tags.parking === 'private') return "restricted";
-
     return "free";
 }
 
@@ -1492,29 +1508,29 @@ function getRuleText(tags) {
     return "Restricted Times / Permit";
 }
 
-/* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES */
+/* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES WITH FILTER SUPPORT */
 function renderSidePanel() {
     const panelContent = document.getElementById("side-panel-content");
     panelContent.innerHTML = "";
 
     if (!cachedParkingFeatures || cachedParkingFeatures.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.7rem; color:var(--text-sub); text-align:center; padding:8px;">No parking zones found.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found in range.</div>`;
         return;
     }
 
     let filtered = cachedParkingFeatures;
-    if (activeFilter !== "all") {
+    if (activeFilter!== "all") {
         filtered = cachedParkingFeatures.filter(f => f.properties.status === activeFilter);
     }
 
     if (filtered.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.7rem; color:var(--text-sub); text-align:center; padding:8px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} parking zones found nearby.</div>`;
         return;
     }
 
     filtered.sort((a, b) => a._distMiles - b._distMiles);
-    const topFeatures = filtered.slice(0, 15);
 
+    const topFeatures = filtered.slice(0, 15);
     topFeatures.forEach(feat => {
         const props = feat.properties;
         const status = props.status;
@@ -1530,7 +1546,7 @@ function renderSidePanel() {
             distLabel = `${feat._distMiles.toFixed(2)} mi`;
         }
 
-        const displayType = status === 'timed' ? 'TIMED / PERMIT' : status.toUpperCase();
+        const displayType = status === 'timed'? 'TIMED / PERMIT' : status.toUpperCase();
 
         card.innerHTML = `
             <div class="item-top">
@@ -1551,12 +1567,11 @@ function renderSidePanel() {
                 } else if (feat.geometry.type === "LineString") {
                     flyCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
                 } else if (feat.geometry.type === "Polygon") {
-                    flyCoords = feat.geometry.coordinates[0][0];
+                    flyCoords = feat.geometry.coordinates;
                 }
             }
 
             showParkingDetails(props, flyCoords);
-
             if (flyCoords && map) {
                 map.flyTo({ center: flyCoords, zoom: 17 });
             }
@@ -1575,16 +1590,13 @@ async function updateParkingData() {
     const center = map.getCenter();
     const originPoint = playerCoords || [center.lng, center.lat];
     document.getElementById("loader").classList.add("show");
-
-    const radius = zoom > 14 ? 1200 : 2500;
+    const radius = zoom > 14? 1200 : 2500;
     const query = `[out:json][timeout:15];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
-
     const endpoints = [
         "https://overpass-api.de/api/interpreter",
         "https://overpass.k33g.org/api/interpreter",
         "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     ];
-
     let data = null;
     for (let endpoint of endpoints) {
         try {
@@ -1599,8 +1611,8 @@ async function updateParkingData() {
     }
 
     if (data && data.elements) {
-        const roads = [], lots = [];
-        cachedParkingFeatures = [];
+        const roads =, lots =;
+        cachedParkingFeatures =;
         const pt = turf.point(originPoint);
 
         data.elements.forEach(el => {
@@ -1643,7 +1655,6 @@ async function updateParkingData() {
                 }
             }
         });
-
         if (map.getSource("overpass")) {
             map.getSource("overpass").setData({ type: "FeatureCollection", features: roads });
         }
@@ -1672,7 +1683,6 @@ function initMap(center) {
         zoom: 16,
         attributionControl: false
     });
-    
     map.on("load", () => {
         const layers = map.getStyle().layers;
         let labelLayerId;
@@ -1683,8 +1693,8 @@ function initMap(center) {
             }
         }
 
-        map.addSource("overpass", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
-        map.addSource("parking-lots", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        map.addSource("overpass", { type: "geojson", data: {type:"FeatureCollection", features:} });
+        map.addSource("parking-lots", { type: "geojson", data: {type:"FeatureCollection", features:} });
         
         map.addLayer({ 
             id: "lots-fill", 
@@ -1718,14 +1728,13 @@ function initMap(center) {
         
         map.on("click", (e) => {
             if (navActive) return;
-            const layersToCheck = [...Object.keys(COLORS).map(s => `layer-${s}`), 'lots-fill'];
+            const layersToCheck =;
             const features = map.queryRenderedFeatures(e.point, { layers: layersToCheck });
             if (features.length) {
                 const clickCoords = [e.lngLat.lng, e.lngLat.lat];
-                showParkingDetails(features[0].properties, clickCoords);
+                showParkingDetails(features.properties, clickCoords);
             }
         });
-
         updateParkingData();
     });
 }
@@ -1733,10 +1742,10 @@ function initMap(center) {
 function showParkingDetails(props, coords) {
     const card = document.getElementById("parking-card");
     selectedCardName = props.name || "Road Segment";
-    selectedCardCoords = coords || (map ? map.getCenter().toArray() : null);
+    selectedCardCoords = coords || (map? map.getCenter().toArray() : null);
 
     document.getElementById("card-title").textContent = selectedCardName;
-    const statusText = props.status === 'timed' ? 'TIMED / PERMIT' : (props.status || "PARKING").toUpperCase();
+    const statusText = props.status === 'timed'? 'TIMED / PERMIT' : (props.status || "PARKING").toUpperCase();
     document.getElementById("card-type").textContent = statusText + " PARKING";
     
     const badge = document.getElementById("card-status-badge");
@@ -1748,6 +1757,12 @@ function showParkingDetails(props, coords) {
     document.getElementById("card-fee").textContent = props.fee || "None";
     
     card.classList.add("show");
+
+    // DISMISS THE PARKING PANEL TO PREVENT OVERLAPPING
+    const panel = document.getElementById("parking-side-panel");
+    if (panel) {
+        panel.classList.add("dismissed");
+    }
 }
 
 /* ACTIONS */
@@ -1777,7 +1792,7 @@ function locateMe() {
 }
 
 function startWatching() {
-    if (watchId !== null) return;
+    if (watchId!== null) return;
     watchId = navigator.geolocation.watchPosition(pos => {
         const rawCoords = [pos.coords.longitude, pos.coords.latitude];
         const rawHeading = pos.coords.heading || currentHeading || 0;
@@ -1805,10 +1820,9 @@ async function handleSearch(inputId) {
     const val = el.value.trim();
     if (!val) return;
     el.blur();
-
     const features = await fetchPlaces(val);
     if (features.length) {
-        const coords = features[0].center;
+        const coords = features.center;
         document.getElementById("home").classList.add("hidden");
         document.getElementById("ui").classList.add("visible");
         
@@ -1826,7 +1840,6 @@ function stopNavigation() {
     
     updateMarkerElement();
     document.getElementById("route-status").classList.remove("show");
-    
     if (map) {
         map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
     }
@@ -1835,6 +1848,12 @@ function stopNavigation() {
     clearRoute();
     removeDestMarker();
     updateParkingData();
+
+    // RESTORE PARKING PANEL ON NAVIGATION END
+    const panel = document.getElementById("parking-side-panel");
+    if (panel) {
+        panel.classList.remove("dismissed");
+    }
 }
 
 /* EVENTS */
@@ -1848,17 +1867,8 @@ document.getElementById("open-map-btn").addEventListener("click", () => {
     document.getElementById("ui").classList.add("visible");
     initMap([-0.1276, 51.5072]);
 });
-
 document.getElementById("home-locate-btn").addEventListener("click", locateMe);
 document.getElementById("locate-btn").addEventListener("click", locateMe);
-
-/* TOGGLE COMPACT PANEL EXPANSION */
-document.getElementById("side-panel-toggle").addEventListener("click", () => {
-    const panel = document.getElementById("parking-side-panel");
-    const icon = document.getElementById("expand-icon");
-    panel.classList.toggle("expanded");
-    icon.textContent = panel.classList.contains("expanded") ? "▼" : "▲";
-});
 
 /* SIDEBAR FILTER CHIP EVENT LISTENERS */
 document.querySelectorAll(".filter-chip").forEach(chip => {
@@ -1871,27 +1881,23 @@ document.querySelectorAll(".filter-chip").forEach(chip => {
         renderSidePanel();
     });
 });
-
 document.getElementById("legend-toggle-btn").addEventListener("click", () => {
     const leg = document.getElementById("legend");
     leg.classList.toggle("hidden-legend");
     document.getElementById("legend-toggle-btn").classList.toggle("active");
 });
-
 document.getElementById("nav-mode-btn").addEventListener("click", () => {
-    navModeOn = !navModeOn;
+    navModeOn =!navModeOn;
     document.getElementById("dest-bar").classList.toggle("show", navModeOn);
     document.getElementById("nav-mode-btn").classList.toggle("active", navModeOn);
     if (!navModeOn) hideDestDropdown();
 });
-
 /* CARD NAVIGATE BUTTON EVENT */
 document.getElementById("card-nav-btn").addEventListener("click", () => {
     if (selectedCardCoords) {
         startRoutingToCoords(selectedCardCoords, selectedCardName);
     }
 });
-
 /* LIVE AUTOCOMPLETE / DROPDOWN INPUT LISTENER */
 document.getElementById("dest-input").addEventListener("input", (e) => {
     clearTimeout(searchDebounceTimeout);
@@ -1900,18 +1906,15 @@ document.getElementById("dest-input").addEventListener("input", (e) => {
         renderDestDropdown(val);
     }, 250);
 });
-
 document.getElementById("dest-search-btn").addEventListener("click", handleDestinationSubmit);
 document.getElementById("dest-input").addEventListener("keypress", (e) => { 
     if(e.key === "Enter") handleDestinationSubmit(); 
 });
-
 document.getElementById("dest-cancel-btn").addEventListener("click", () => {
     document.getElementById("dest-bar").classList.remove("show");
     document.getElementById("nav-mode-btn").classList.remove("active");
     hideDestDropdown();
 });
-
 document.getElementById("nav-go-btn").addEventListener("click", () => {
     navActive = true;
     
@@ -1920,6 +1923,12 @@ document.getElementById("nav-go-btn").addEventListener("click", () => {
 
     document.getElementById("nav-panel").classList.remove("show");
     document.getElementById("route-status").classList.add("show");
+
+    // DISMISS THE PARKING PANEL DURING ACTIVE NAVIGATION
+    const panel = document.getElementById("parking-side-panel");
+    if (panel) {
+        panel.classList.add("dismissed");
+    }
     
     if (playerCoords && map) {
         map.easeTo({
@@ -1933,18 +1942,37 @@ document.getElementById("nav-go-btn").addEventListener("click", () => {
     
     startWatching();
 });
-
 document.getElementById("nav-cancel-btn").addEventListener("click", () => {
     document.getElementById("nav-panel").classList.remove("show");
     clearRoute();
     removeDestMarker();
+
+    // RESTORE THE PARKING PANEL
+    const panel = document.getElementById("parking-side-panel");
+    if (panel) {
+        panel.classList.remove("dismissed");
+    }
 });
 
 document.getElementById("rs-end-btn").addEventListener("click", stopNavigation);
-
 document.getElementById("card-close-btn").addEventListener("click", () => {
     document.getElementById("parking-card").classList.remove("show");
+
+    // RESTORE THE PARKING PANEL
+    const panel = document.getElementById("parking-side-panel");
+    if (panel &&!navActive) {
+        panel.classList.remove("dismissed");
+    }
 });
+
+// COLLAPSE PANEL TOGGLE EVENT
+const panelHeader = document.getElementById("panel-header");
+const sidePanel = document.getElementById("parking-side-panel");
+if (panelHeader && sidePanel) {
+    panelHeader.addEventListener("click", () => {
+        sidePanel.classList.toggle("collapsed");
+    });
+}
 </script>
 </body>
 </html>
