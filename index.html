@@ -1,458 +1,1933 @@
+Working app
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Parking Finder</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#050816" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Parking Ease</title>
 
-  <!-- Mapbox GL JS -->
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.css" rel="stylesheet" />
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.js"></script>
+    <!-- Mapbox GL JS & CSS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Turf.js for Route Snapping & Bearing Calculation -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    body, html {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #0b0e14;
-      color: #ffffff;
-    }
+    <style>
+        :root {
+            --bg-dark: #050816;
+            --panel-bg: rgba(10, 15, 30, 0.88);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --primary-blue: #2563eb;
+            --primary-blue-hover: #1d4ed8;
+            --text-main: #ffffff;
+            --text-sub: rgba(255, 255, 255, 0.6);
+            --color-free: #22c55e;
+            --color-paid: #f97316;
+            --color-timed: #facc15;
+            --color-restricted: #ef4444;
+            --color-hgv: #8b5cf6;
+        }
 
-    #map {
-      width: 100vw;
-      height: 100vh;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-    /* Top Search Bar */
-    .search-container {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      right: 16px;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      background: rgba(13, 17, 26, 0.92);
-      backdrop-filter: blur(12px);
-      border-radius: 28px;
-      padding: 6px 6px 6px 20px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            color: var(--text-main);
+        }
 
-    .search-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: #ffffff;
-      font-size: 17px;
-      font-weight: 500;
-      outline: none;
-    }
+        #map {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
 
-    .search-input::placeholder {
-      color: #8e8e93;
-    }
+        .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
+            opacity: 0.7;
+        }
 
-    .search-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: #2563eb;
-      border: none;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
+        /* GLASS CONTAINER */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+        }
 
-    .search-btn:active {
-      background: #1d4ed8;
-    }
+        /* WELCOME / HOME SCREEN */
+        #home {
+            position: absolute;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 50% 30%, #0d1f4e 0%, #050816 80%);
+            padding: 24px;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
 
-    /* Overlay Panel Layout */
-    .panels-container {
-      position: absolute;
-      top: 80px;
-      left: 16px;
-      right: 16px;
-      z-index: 10;
-      display: flex;
-      gap: 12px;
-      pointer-events: none;
-    }
+        #home.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
 
-    .panel {
-      pointer-events: auto;
-      background: rgba(13, 17, 26, 0.92);
-      backdrop-filter: blur(12px);
-      border-radius: 16px;
-      padding: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    }
+        .brand-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
 
-    /* Nearest Parking Panel */
-    .nearest-panel {
-      flex: 1.2;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 220px;
-    }
+        .brand-logo {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+        }
 
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+        .brand-logo svg {
+            width: 40px;
+            height: 40px;
+            fill: #fff;
+        }
 
-    .panel-title {
-      font-weight: 700;
-      font-size: 15px;
-    }
+        #home h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-    .hide-btn {
-      background: rgba(255, 255, 255, 0.12);
-      border: none;
-      color: #a1a1aa;
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      cursor: pointer;
-    }
+        #home p {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+            margin-top: 6px;
+        }
 
-    /* Filter Chips */
-    .filter-scroll {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-    }
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: min(440px, 100%);
+        }
 
-    .filter-scroll::-webkit-scrollbar {
-      display: none;
-    }
+        .search-wrap {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 100px;
+            padding: 6px 6px 6px 20px;
+            transition: all 0.2s ease;
+        }
 
-    .chip {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #e4e4e7;
-      padding: 5px 12px;
-      border-radius: 14px;
-      font-size: 12px;
-      white-space: nowrap;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
+        .search-wrap:focus-within {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+            background: rgba(255, 255, 255, 0.12);
+        }
 
-    .chip.active {
-      background: #1d4ed8;
-      border-color: #3b82f6;
-      color: #ffffff;
-    }
+        .search-wrap input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 500;
+        }
 
-    .status-text {
-      font-size: 13px;
-      color: #9ca3af;
-      padding: 8px 0;
-      text-align: center;
-    }
+        .search-wrap input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
 
-    .results-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      overflow-y: auto;
-    }
+        .btn-primary {
+            background: var(--primary-blue);
+            color: #fff;
+            border: none;
+            border-radius: 100px;
+            padding: 14px 24px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
 
-    .result-item {
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-    }
+        .btn-primary:active {
+            transform: scale(0.97);
+            background: var(--primary-blue-hover);
+        }
 
-    /* Legend Panel */
-    .legend-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 13px;
-    }
+        .home-actions {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
 
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: #e4e4e7;
-      font-weight: 500;
-    }
+        .btn-secondary {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 14px;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s ease;
+        }
 
-    .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
 
-    .dot.free { background-color: #22c55e; }
-    .dot.paid { background-color: #f97316; }
-    .dot.timed { background-color: #eab308; }
-    .dot.no-parking { background-color: #ef4444; }
-    .dot.hgv { background-color: #a855f7; }
+        /* IN-MAP UI */
+        #ui {
+            position: absolute;
+            inset: 0;
+            z-index: 1000;
+            pointer-events: none;
+            display: none;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
 
-    /* Bottom Action Floating Buttons */
-    .fab-container {
-      position: absolute;
-      bottom: 110px;
-      right: 16px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+        #ui.visible {
+            display: block;
+        }
 
-    .fab {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(13, 17, 26, 0.92);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    }
-  </style>
+        /* SIDE PANEL FOR CLOSEST PARKING */
+        .parking-side-panel {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 80px);
+            left: 16px;
+            width: 290px;
+            max-height: calc(100vh - 120px);
+            pointer-events: auto;
+            z-index: 900;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        .side-panel-header {
+            padding: 14px 16px 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.02em;
+        }
+
+        /* FILTER CHIPS ROW */
+        .filter-bar {
+            display: flex;
+            gap: 6px;
+            padding: 8px 12px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0, 0, 0, 0.15);
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
+        }
+
+        .filter-chip {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-chip:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .filter-chip.active {
+            color: #fff;
+            background: rgba(37, 99, 235, 0.35);
+            border-color: #2563eb;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+        }
+
+        .chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .side-panel-content {
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .side-panel-content::-webkit-scrollbar {
+            width: 4px;
+        }
+        .side-panel-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .parking-item-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .parking-item-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .item-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+
+        .item-dist {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #60a5fa;
+            background: rgba(37, 99, 235, 0.2);
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .item-bottom {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            color: var(--text-sub);
+        }
+
+        .item-badge {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        /* SEARCH BAR & DROPDOWN */
+        #top-bar {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(440px, 92vw);
+            pointer-events: auto;
+        }
+
+        .search-glass {
+            display: flex;
+            align-items: center;
+            padding: 6px 6px 6px 18px;
+        }
+
+        #map-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        #map-input::placeholder {
+            color: var(--text-sub);
+        }
+
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary-blue);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* SEARCH SUGGESTIONS DROPDOWN */
+        .search-dropdown {
+            margin-top: 8px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            overflow: hidden;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .search-dropdown.show {
+            display: flex;
+        }
+
+        .dropdown-item {
+            padding: 12px 18px;
+            font-size: 0.88rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: background 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover, .dropdown-item:active {
+            background: rgba(37, 99, 235, 0.25);
+        }
+
+        .dropdown-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .dropdown-title {
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .dropdown-distance {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #60a5fa;
+            background: rgba(37, 99, 235, 0.2);
+            padding: 2px 8px;
+            border-radius: 100px;
+            border: 1px solid rgba(37, 99, 235, 0.4);
+        }
+
+        .dropdown-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+        }
+
+        /* FAB CONTROLS */
+        .fab-group {
+            position: absolute;
+            right: 16px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .fab {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 1px solid var(--panel-border);
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .fab:active {
+            transform: scale(0.92);
+        }
+
+        .fab.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
+
+        /* LEGEND */
+        #legend {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 76px);
+            right: 16px;
+            padding: 14px 16px;
+            pointer-events: auto;
+            transition: opacity 0.2s, transform 0.2s;
+            transform-origin: top right;
+        }
+
+        #legend.hidden-legend {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+
+        .leg-mini {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 8px;
+        }
+
+        .leg-mini:last-child {
+            margin-bottom: 0;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* LOADER */
+        #loader {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 80px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: none;
+            pointer-events: none;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        #loader.show {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* POPUPS & CARDS */
+        .bottom-card {
+            position: absolute;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(420px, 92vw);
+            pointer-events: auto;
+            z-index: 999;
+            display: none;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .bottom-card.show {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translate(-50%, 30px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            background: rgba(37, 99, 235, 0.15);
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .card-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .card-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-body {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.88rem;
+        }
+
+        .info-label {
+            color: var(--text-sub);
+        }
+
+        .info-value {
+            font-weight: 600;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* NAVIGATION OVERLAYS */
+        #dest-bar {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(440px, 92vw);
+            pointer-events: auto;
+            display: none;
+            z-index: 1001;
+        }
+
+        #dest-bar.show {
+            display: block;
+        }
+
+        #route-status {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(420px, 92vw);
+            padding: 14px 18px;
+            pointer-events: auto;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1001;
+            border-color: rgba(37, 99, 235, 0.4);
+        }
+
+        #route-status.show {
+            display: flex;
+        }
+
+        /* STANDARD LOCATION DOT MARKER */
+        .player-marker {
+            width: 32px;
+            height: 32px;
+            position: relative;
+        }
+
+        .player-pulse {
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .player-dot {
+            width: 100%;
+            height: 100%;
+            background: #2563eb;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 2;
+        }
+
+        /* SAT NAV ARROW MARKER */
+        .satnav-arrow-wrapper {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease-out;
+        }
+
+        .satnav-arrow {
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 24px solid #38bdf8;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+            position: relative;
+        }
+
+        .satnav-arrow::after {
+            content: '';
+            position: absolute;
+            top: 14px;
+            left: -6px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 12px solid #0284c7;
+        }
+
+        .dest-pin {
+            width: 32px;
+            height: 32px;
+            background: #ef4444;
+            border: 3px solid #ffffff;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+        }
+    </style>
 </head>
 <body>
 
-  <div id="map"></div>
-
-  <!-- Search Bar -->
-  <div class="search-container">
-    <input type="text" id="searchInput" class="search-input" placeholder="Search location..." value="Dover">
-    <button id="searchBtn" class="search-btn">
-      <i data-lucide="search"></i>
-    </button>
-  </div>
-
-  <!-- Panels overlay -->
-  <div class="panels-container">
-    <!-- Nearest Parking Box -->
-    <div class="panel nearest-panel" id="nearestPanel">
-      <div class="panel-header">
-        <span class="panel-title">Nearest Parking</span>
-        <button class="hide-btn" onclick="toggleNearestPanel()">Hide</button>
-      </div>
-
-      <div class="filter-scroll">
-        <button class="chip active" data-filter="all">All</button>
-        <button class="chip" data-filter="free"><span class="dot free"></span>Free</button>
-        <button class="chip" data-filter="paid"><span class="dot paid"></span>Paid</button>
-        <button class="chip" data-filter="timed"><span class="dot timed"></span>Timed</button>
-        <button class="chip" data-filter="no-parking"><span class="dot no-parking"></span>No Parking</button>
-        <button class="chip" data-filter="hgv"><span class="dot hgv"></span>HGV</button>
-      </div>
-
-      <div id="statusText" class="status-text">Searching location...</div>
-      <div id="resultsList" class="results-list"></div>
+<!-- HOME SCREEN -->
+<div id="home">
+    <div class="brand-header">
+        <div class="brand-logo">
+            <svg viewBox="0 0 24 24"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
+        </div>
+        <h1>Parking Ease</h1>
+        <p>Find real-time parking zones near you</p>
     </div>
 
-    <!-- Legend Box -->
-    <div class="panel legend-panel">
-      <div class="legend-item"><span class="dot free"></span> Free Parking</div>
-      <div class="legend-item"><span class="dot paid"></span> Paid Parking</div>
-      <div class="legend-item"><span class="dot timed"></span> Timed / Permit</div>
-      <div class="legend-item"><span class="dot no-parking"></span> No Parking</div>
-      <div class="legend-item"><span class="dot hgv"></span> HGV Parking</div>
+    <div class="search-container">
+        <div class="search-wrap">
+            <input id="home-input" type="text" placeholder="City, store, or postcode..." autocomplete="off" />
+            <button id="home-btn" class="btn-primary">Search</button>
+        </div>
+        <div class="home-actions">
+            <button id="open-map-btn" class="btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+                Explore Map
+            </button>
+            <button id="home-locate-btn" class="btn-secondary" style="background: rgba(37,99,235,0.2); border-color: rgba(37,99,235,0.4);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                Locate Me
+            </button>
+        </div>
     </div>
-  </div>
+</div>
 
-  <!-- Floating Action Buttons -->
-  <div class="fab-container">
-    <button class="fab" title="Menu"><i data-lucide="menu"></i></button>
-    <button class="fab" id="locateBtn" title="Current Location"><i data-lucide="navigation"></i></button>
-    <button class="fab" id="recenterBtn" title="Target Center"><i data-lucide="disc"></i></button>
-  </div>
+<!-- MAP CANVAS -->
+<div id="map"></div>
 
-  <script>
-    // Initialize Mapbox Token
-    mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your Mapbox Public Key
+<!-- MAP OVERLAYS -->
+<div id="ui">
+    <!-- LEFT SIDEBAR: NEARBY PARKING ZONES WITH FILTER BUTTONS -->
+    <div id="parking-side-panel" class="glass-panel parking-side-panel">
+        <div class="side-panel-header">Nearest Parking Zones</div>
+        
+        <!-- PARKING TYPE FILTER BAR -->
+        <div class="filter-bar">
+            <button class="filter-chip active" data-filter="all">All</button>
+            <button class="filter-chip" data-filter="free"><span class="chip-dot" style="background:var(--color-free)"></span>Free</button>
+            <button class="filter-chip" data-filter="paid"><span class="chip-dot" style="background:var(--color-paid)"></span>Paid</button>
+            <button class="filter-chip" data-filter="timed"><span class="chip-dot" style="background:var(--color-timed)"></span>Timed/Permit</button>
+            <button class="filter-chip" data-filter="restricted"><span class="chip-dot" style="background:var(--color-restricted)"></span>No Parking</button>
+            <button class="filter-chip" data-filter="hgv"><span class="chip-dot" style="background:var(--color-hgv)"></span>HGV</button>
+        </div>
 
-    const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [1.3134, 51.1279], // Dover coordinates [lng, lat]
-      zoom: 14
+        <div id="side-panel-content" class="side-panel-content">
+            <div style="font-size: 0.75rem; color: var(--text-sub); text-align: center; padding: 10px;">
+                Searching location...
+            </div>
+        </div>
+    </div>
+
+    <div id="top-bar">
+        <div class="glass-panel search-glass">
+            <input id="map-input" type="text" placeholder="Search new location..." autocomplete="off" />
+            <button id="map-btn" class="icon-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="dest-bar">
+        <div class="glass-panel search-glass" style="border-color: rgba(37, 99, 235, 0.5);">
+            <input id="dest-input" type="text" placeholder="Where to? (e.g., Tesco, Sainsbury's)" autocomplete="off" />
+            <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+            <button id="dest-cancel-btn" class="card-close">✕</button>
+        </div>
+        <div id="dest-dropdown" class="search-dropdown"></div>
+    </div>
+
+    <div id="route-status" class="glass-panel">
+        <div>
+            <div id="rs-main-text" style="font-weight: 700; font-size: 0.95rem;">Navigating...</div>
+            <div id="rs-sub-text" style="font-size: 0.75rem; color: var(--text-sub);">Following live sat nav route</div>
+        </div>
+        <button id="rs-end-btn" class="btn-primary" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 16px; font-size: 0.8rem; cursor: pointer;">End</button>
+    </div>
+
+    <div id="legend" class="glass-panel">
+        <div class="leg-mini"><div class="dot" style="background:var(--color-free)"></div>Free Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed / Permit Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Parking</div>
+    </div>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <span>Fetching Parking Data...</span>
+    </div>
+
+    <div class="fab-group">
+        <button id="legend-toggle-btn" class="fab" title="Toggle Legend">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+        <button id="nav-mode-btn" class="fab" title="Navigation Mode">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+        </button>
+        <button id="locate-btn" class="fab" title="My Location">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
+        </button>
+    </div>
+
+    <div id="parking-card" class="glass-panel bottom-card">
+        <div class="card-header">
+            <div class="card-title-group">
+                <div class="card-icon">🅿️</div>
+                <div>
+                    <div id="card-title" class="card-title">Unknown Road</div>
+                    <div id="card-type" class="card-subtitle">Street Parking</div>
+                </div>
+            </div>
+            <button id="card-close-btn" class="card-close">✕</button>
+        </div>
+        <div class="card-body">
+            <div class="info-row">
+                <span class="info-label">Status</span>
+                <span id="card-status-badge" class="badge">Free</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Max Stay / Rules</span>
+                <span id="card-maxstay" class="info-value">No Limit</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Fee</span>
+                <span id="card-fee" class="info-value">None</span>
+            </div>
+            <button id="card-nav-btn" class="btn-primary" style="width: 100%; margin-top: 8px; border-radius: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                Navigate Here
+            </button>
+        </div>
+    </div>
+
+    <div id="nav-panel" class="glass-panel bottom-card">
+        <div class="card-header">
+            <div class="card-title-group">
+                <div class="card-icon">🗺️</div>
+                <div>
+                    <div id="nav-dest-name" class="card-title">Selected Point</div>
+                    <div class="card-subtitle">Calculated Route Details</div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="info-row">
+                <span class="info-label">Driving Distance</span>
+                <span id="nav-car-dist" class="info-value">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Est. Drive Time</span>
+                <span id="nav-car-time" class="info-value">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Est. Walk Time</span>
+                <span id="nav-walk-time" class="info-value">--</span>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <button id="nav-cancel-btn" class="btn-secondary">Cancel</button>
+                <button id="nav-go-btn" class="btn-primary" style="flex:1">Start Navigation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const TOKEN = "pk.eyJ1IjoiY2Nhc3NpbmdlbmEiLCJhIjoiY21wNnNwN3dxMDJ2bjJwczlrM2VqYng4ZSJ9.nBfFJdM7J3aNhAhPawLS8w";
+mapboxgl.accessToken = TOKEN;
+
+const COLORS = {
+    free: "#22c55e",
+    paid: "#f97316",
+    timed: "#facc15",
+    restricted: "#ef4444",
+    hgv: "#8b5cf6"
+};
+
+let map = null;
+let playerMarker = null;
+let playerCoords = null;
+let currentHeading = 0;
+let watchId = null;
+let destMarker = null;
+let destCoords = null;
+let navActive = false;
+let navModeOn = false;
+let activeRouteGeoJSON = null;
+let searchDebounceTimeout = null;
+let selectedCardCoords = null;
+let selectedCardName = "";
+
+// Side panel cache & filter state
+let cachedParkingFeatures = [];
+let activeFilter = "all";
+
+/* HAVERSINE DISTANCE MATH (MILES) */
+function calculateDistanceMiles(coord1, coord2) {
+    const R = 3958.8; // Radius of Earth in miles
+    const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+    const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+/* PARKING LAYERS VISIBILITY */
+function setParkingLayersVisibility(visible) {
+    if (!map) return;
+    const visibility = visible ? 'visible' : 'none';
+    
+    Object.keys(COLORS).forEach(status => {
+        const layerId = `layer-${status}`;
+        if (map.getLayer(layerId)) {
+            map.setLayoutProperty(layerId, 'visibility', visibility);
+        }
     });
 
-    // Sample parking markers data fallback
-    const sampleParkings = [
-      { name: "Priory Street Car Park", type: "paid", lng: 1.3092, lat: 51.1265 },
-      { name: "Maison Dieu Car Park", type: "free", lng: 1.3115, lat: 51.1290 },
-      { name: "Town Centre Timed Bay", type: "timed", lng: 1.3140, lat: 51.1250 },
-      { name: "Dover Port HGV Rest", type: "hgv", lng: 1.3200, lat: 51.1220 }
+    if (map.getLayer('lots-fill')) {
+        map.setLayoutProperty('lots-fill', 'visibility', visibility);
+    }
+}
+
+/* DYNAMIC PLAYER MARKER BUILDERS */
+function buildDotMarkerEl() {
+    const wrap = document.createElement('div');
+    wrap.className = 'player-marker';
+    wrap.id = 'player-marker-inner';
+    wrap.innerHTML = `<div class="player-pulse"></div><div class="player-dot"></div>`;
+    return wrap;
+}
+
+function buildArrowMarkerEl() {
+    const wrap = document.createElement('div');
+    wrap.className = 'satnav-arrow-wrapper';
+    wrap.id = 'player-marker-inner';
+    wrap.innerHTML = `<div class="satnav-arrow"></div>`;
+    return wrap;
+}
+
+function updateMarkerElement() {
+    if (!map || !playerCoords) return;
+    
+    if (playerMarker) {
+        playerMarker.remove();
+        playerMarker = null;
+    }
+
+    const el = navActive ? buildArrowMarkerEl() : buildDotMarkerEl();
+    playerMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat(playerCoords)
+        .addTo(map);
+}
+
+function placePlayerMarker(coords, heading = 0) {
+    if (!map) return;
+    playerCoords = coords;
+
+    if (!playerMarker) {
+        updateMarkerElement();
+    } else {
+        playerMarker.setLngLat(coords);
+    }
+
+    const innerEl = document.getElementById('player-marker-inner');
+    if (innerEl && navActive) {
+        innerEl.style.transform = `rotate(${heading}deg)`;
+    }
+}
+
+/* ROUTE SNAPPING & BEARING MATH */
+function processSnapToRoute(rawCoords, deviceHeading) {
+    if (!navActive || !activeRouteGeoJSON || !window.turf) {
+        return { snappedCoords: rawCoords, heading: deviceHeading };
+    }
+
+    try {
+        const rawPt = turf.point(rawCoords);
+        const routeLine = turf.lineString(activeRouteGeoJSON.coordinates);
+
+        const snapped = turf.nearestPointOnLine(routeLine, rawPt);
+        const snappedCoords = snapped.geometry.coordinates;
+
+        const distanceAlong = snapped.properties.location; 
+        const aheadPt = turf.along(routeLine, distanceAlong + 0.015, { units: 'kilometers' });
+        
+        let calculatedHeading = turf.bearing(snapped, aheadPt);
+        if (calculatedHeading < 0) calculatedHeading += 360;
+
+        return {
+            snappedCoords: snappedCoords,
+            heading: calculatedHeading
+        };
+    } catch (err) {
+        console.warn("Snap calculation failed, falling back to raw location", err);
+        return { snappedCoords: rawCoords, heading: deviceHeading };
+    }
+}
+
+/* DESTINATION MARKER */
+function placeDestMarker(coords) {
+    if (!map) return;
+    destCoords = coords;
+    if (!destMarker) {
+        const el = document.createElement('div');
+        el.className = 'dest-pin';
+        destMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+            .setLngLat(coords)
+            .addTo(map);
+    } else {
+        destMarker.setLngLat(coords);
+    }
+}
+
+function removeDestMarker() {
+    if (destMarker) { destMarker.remove(); destMarker = null; }
+    destCoords = null;
+}
+
+/* ROUTING API & DRAWING */
+async function fetchRoute(from, to) {
+    const coords = `${from[0]},${from[1]};${to[0]},${to[1]}`;
+    const params = `geometries=geojson&overview=full&access_token=${TOKEN}`;
+    try {
+        const [walkRes, driveRes] = await Promise.all([
+            fetch(`https://api.mapbox.com/directions/v5/mapbox/walking/${coords}?${params}`),
+            fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?${params}`)
+        ]);
+        const [walkData, driveData] = await Promise.all([walkRes.json(), driveRes.json()]);
+        return { walk: walkData.routes?.[0] || null, drive: driveData.routes?.[0] || null };
+    } catch (e) {
+        console.error("Routing failed", e);
+        return { walk: null, drive: null };
+    }
+}
+
+function drawRoute(geojsonGeom) {
+    if (!map) return;
+    activeRouteGeoJSON = geojsonGeom;
+    const data = { type: 'Feature', geometry: geojsonGeom };
+
+    if (map.getSource('route')) {
+        map.getSource('route').setData(data);
+    } else {
+        map.addSource('route', { type: 'geojson', data });
+
+        map.addLayer({
+            id: 'route-bg', type: 'line', source: 'route',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#0284c7', 'line-width': 12, 'line-opacity': 0.7 }
+        });
+
+        map.addLayer({
+            id: 'route-line', type: 'line', source: 'route',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#38bdf8', 'line-width': 7, 'line-opacity': 1.0 }
+        });
+    }
+}
+
+function clearRoute() {
+    if (!map) return;
+    activeRouteGeoJSON = null;
+    ['route-line', 'route-bg'].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
+    if (map.getSource('route')) map.removeSource('route');
+}
+
+/* STRICT LOCAL POI / STORE SEARCH & SORTING */
+async function fetchPlaces(query) {
+    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
+    const prox = `${origin[0]},${origin[1]}`;
+
+    try {
+        const placeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&types=place,locality,district,postcode&proximity=${prox}&country=gb&limit=5`;
+        const placeRes = await fetch(placeUrl);
+        const placeData = await placeRes.json();
+        let features = placeData.features || [];
+
+        if (features.length === 0) {
+            const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&types=poi,address&proximity=${prox}&country=gb&limit=5`;
+            const fallbackRes = await fetch(fallbackUrl);
+            const fallbackData = await fallbackRes.json();
+            features = fallbackData.features || [];
+        }
+
+        features.forEach(f => {
+            if (f.center) {
+                f._distMiles = calculateDistanceMiles(origin, f.center);
+            } else {
+                f._distMiles = 99999;
+            }
+        });
+
+        features.sort((a, b) => a._distMiles - b._distMiles);
+
+        return features;
+    } catch (e) {
+        console.error("Geocoding error", e);
+        return [];
+    }
+}
+
+function hideDestDropdown() {
+    const dropdown = document.getElementById('dest-dropdown');
+    dropdown.classList.remove('show');
+    dropdown.innerHTML = '';
+}
+
+async function renderDestDropdown(query) {
+    const dropdown = document.getElementById('dest-dropdown');
+    if (!query.trim()) {
+        hideDestDropdown();
+        return;
+    }
+
+    const features = await fetchPlaces(query);
+    if (!features.length) {
+        hideDestDropdown();
+        return;
+    }
+
+    dropdown.innerHTML = '';
+    features.forEach(feat => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        
+        const titleRow = document.createElement('div');
+        titleRow.className = 'dropdown-title-row';
+
+        const title = document.createElement('span');
+        title.className = 'dropdown-title';
+        title.textContent = feat.text || feat.place_name;
+
+        const distTag = document.createElement('span');
+        distTag.className = 'dropdown-distance';
+        
+        if (feat._distMiles < 0.1) {
+            const yards = Math.round(feat._distMiles * 1760);
+            distTag.textContent = `${yards} yd`;
+        } else {
+            distTag.textContent = `${feat._distMiles.toFixed(1)} mi`;
+        }
+
+        titleRow.appendChild(title);
+        titleRow.appendChild(distTag);
+
+        const sub = document.createElement('span');
+        sub.className = 'dropdown-subtitle';
+        sub.textContent = feat.place_name;
+
+        item.appendChild(titleRow);
+        item.appendChild(sub);
+
+        item.addEventListener('click', () => {
+            selectDestination(feat);
+            hideDestDropdown();
+        });
+
+        dropdown.appendChild(item);
+    });
+
+    dropdown.classList.add('show');
+}
+
+async function selectDestination(feature) {
+    document.getElementById('dest-input').value = feature.text || feature.place_name;
+    const coords = feature.center;
+
+    startRoutingToCoords(coords, feature.place_name);
+}
+
+async function startRoutingToCoords(coords, name) {
+    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
+
+    placeDestMarker(coords);
+    document.getElementById('nav-dest-name').textContent = name;
+    
+    document.getElementById("loader").classList.add("show");
+    const routes = await fetchRoute(origin, coords);
+    document.getElementById("loader").classList.remove("show");
+
+    if (routes.drive || routes.walk) {
+        const driveRoute = routes.drive;
+        const walkRoute = routes.walk;
+        
+        if (driveRoute) {
+            drawRoute(driveRoute.geometry);
+            const miles = (driveRoute.distance * 0.000621371).toFixed(1);
+            document.getElementById('nav-car-dist').textContent = miles + " mi";
+            document.getElementById('nav-car-time').textContent = Math.round(driveRoute.duration / 60) + " mins";
+        }
+        if (walkRoute) {
+            document.getElementById('nav-walk-time').textContent = Math.round(walkRoute.duration / 60) + " mins";
+        }
+
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend(origin);
+        bounds.extend(coords);
+        map.fitBounds(bounds, { padding: 80 });
+
+        document.getElementById('parking-card').classList.remove('show');
+        document.getElementById('nav-panel').classList.add('show');
+        document.getElementById('dest-bar').classList.remove('show');
+    } else {
+        alert("Unable to calculate route.");
+    }
+}
+
+async function handleDestinationSubmit() {
+    const val = document.getElementById('dest-input').value.trim();
+    if (!val) return;
+
+    hideDestDropdown();
+    document.getElementById('dest-input').blur();
+
+    const features = await fetchPlaces(val);
+    if (features.length > 0) {
+        selectDestination(features[0]);
+    } else {
+        alert("Location or store not found.");
+    }
+}
+
+/* PARKING LOGIC */
+function classifyParking(tags) {
+    // 1. Check HGV designation first
+    if (
+        tags.hgv === "designated" || tags.hgv === "yes" ||
+        tags.truck === "yes" || tags["parking:hgv"] === "yes" ||
+        tags["parking:hgv"] === "designated" || tags["hgv:parking"] === "yes" ||
+        tags.amenity === "truck_parking"
+    ) return "hgv";
+
+    // 2. Check strict NO PARKING / NO WAITING AT ALL TIMES (Red - Restricted)
+    const hasDoubleYellowLine = 
+        tags['parking:lane:both:yellow_line'] === 'double' ||
+        tags['parking:lane:left:yellow_line'] === 'double' ||
+        tags['parking:lane:right:yellow_line'] === 'double' ||
+        tags['parking:lane:yellow_line'] === 'double';
+
+    const isStrictlyRestricted = (val) => {
+        if (!val) return false;
+        const v = val.toLowerCase();
+        return v === 'no_parking' || v === 'no_stopping' || v === 'prohibited';
+    };
+
+    const hasRestrictedLane = 
+        isStrictlyRestricted(tags['parking:lane:both']) ||
+        isStrictlyRestricted(tags['parking:lane:left']) ||
+        isStrictlyRestricted(tags['parking:lane:right']) ||
+        isStrictlyRestricted(tags['parking:condition:both']) ||
+        isStrictlyRestricted(tags['parking:condition:left']) ||
+        isStrictlyRestricted(tags['parking:condition:right']) ||
+        isStrictlyRestricted(tags['parking:both:restriction']) ||
+        isStrictlyRestricted(tags['parking:left:restriction']) ||
+        isStrictlyRestricted(tags['parking:right:restriction']);
+
+    const hasStrictGeneralRestriction = 
+        tags['restriction'] === 'no_parking' ||
+        tags['clearway'] !== undefined;
+
+    if (hasDoubleYellowLine || hasRestrictedLane || hasStrictGeneralRestriction) {
+        return "restricted";
+    }
+
+    // 3. Check for TIMED / PERMIT / RESTRICTED TIME PARKING (Yellow Marker)
+    // - Single yellow lines (restricted hours/times)
+    // - Resident / Permit holder zones
+    // - Maxstay limits / Disc parking / Time intervals
+    const hasSingleYellowLine = 
+        tags['parking:lane:both:yellow_line'] === 'single' ||
+        tags['parking:lane:left:yellow_line'] === 'single' ||
+        tags['parking:lane:right:yellow_line'] === 'single' ||
+        tags['parking:lane:yellow_line'] === 'single';
+
+    const isPermitOrTimedValue = (val) => {
+        if (!val) return false;
+        const v = val.toLowerCase();
+        return v.includes('permit') || 
+               v.includes('resident') || 
+               v.includes('timed') || 
+               v.includes('disc') || 
+               v.includes('limited') || 
+               v.includes('customer') ||
+               v === 'no_waiting';
+    };
+
+    const hasPermitOrTimedTag = 
+        hasSingleYellowLine ||
+        isPermitOrTimedValue(tags['parking:lane:both']) ||
+        isPermitOrTimedValue(tags['parking:lane:left']) ||
+        isPermitOrTimedValue(tags['parking:lane:right']) ||
+        isPermitOrTimedValue(tags['parking:condition:both']) ||
+        isPermitOrTimedValue(tags['parking:condition:left']) ||
+        isPermitOrTimedValue(tags['parking:condition:right']) ||
+        isPermitOrTimedValue(tags['parking:both:access']) ||
+        isPermitOrTimedValue(tags['parking:left:access']) ||
+        isPermitOrTimedValue(tags['parking:right:access']) ||
+        tags['restriction'] === 'no_waiting' ||
+        tags['waiting_restrictions'] !== undefined ||
+        tags['no_waiting'] !== undefined;
+
+    const hasTimedAttributes = 
+        tags.maxstay ||
+        tags['parking:both:maxstay'] || tags['parking:left:maxstay'] || tags['parking:right:maxstay'] ||
+        tags['parking:lane:both:maxstay'] || tags['parking:lane:left:maxstay'] || tags['parking:lane:right:maxstay'] ||
+        tags['parking:condition:both:maxstay'] || tags['parking:condition:left:maxstay'] || tags['parking:condition:right:maxstay'] ||
+        tags['parking:both:zone'] || tags['parking:left:zone'] || tags['parking:right:zone'] ||
+        tags['parking:condition:both:residents'] || tags['parking:condition:left:residents'] || tags['parking:condition:right:residents'] ||
+        tags['parking:condition:both:permit'] || tags['parking:condition:left:permit'] || tags['parking:condition:right:permit'] ||
+        Object.keys(tags).some(k => k.includes('conditional') || k.includes('time_interval') || k.endsWith(':maxstay') || k.endsWith(':zone'));
+
+    if (hasPermitOrTimedTag || hasTimedAttributes) {
+        return "timed";
+    }
+
+    // 4. Paid parking
+    if (
+        tags.fee === "yes" || 
+        tags['parking:lane:both'] === 'paid' || tags['parking:lane:left'] === 'paid' || tags['parking:lane:right'] === 'paid' ||
+        tags['parking:condition:both'] === 'paid' || tags['parking:condition:left'] === 'paid' || tags['parking:condition:right'] === 'paid' ||
+        tags['parking:both:fee'] === 'yes' || tags['parking:left:fee'] === 'yes' || tags['parking:right:fee'] === 'yes'
+    ) return "paid";
+
+    // 5. Major thoroughfares & private roads
+    if (["motorway", "trunk", "primary"].includes(tags.highway) || tags.access === 'private' || tags.parking === 'private') return "restricted";
+
+    return "free";
+}
+
+function formatRoadName(tags) {
+    if (tags.name) return tags.name;
+    if (tags.ref) return tags.ref;
+    if (tags.highway) {
+        return tags.highway.charAt(0).toUpperCase() + tags.highway.slice(1).replace('_', ' ') + " Road";
+    }
+    return "Street Parking";
+}
+
+function getRuleText(tags) {
+    if (tags['parking:both:zone'] || tags['parking:left:zone'] || tags['parking:right:zone']) {
+        return `Permit Zone (${tags['parking:both:zone'] || tags['parking:left:zone'] || tags['parking:right:zone']})`;
+    }
+    if (tags['parking:condition:both:residents'] || tags['parking:condition:left:residents'] || tags['parking:condition:right:residents']) {
+        return "Permit / Residents Only";
+    }
+    if (tags.maxstay) return tags.maxstay;
+    if (tags['parking:both:maxstay'] || tags['parking:left:maxstay'] || tags['parking:right:maxstay']) {
+        return tags['parking:both:maxstay'] || tags['parking:left:maxstay'] || tags['parking:right:maxstay'];
+    }
+    return "Restricted Times / Permit";
+}
+
+/* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES WITH FILTER SUPPORT */
+function renderSidePanel() {
+    const panelContent = document.getElementById("side-panel-content");
+    panelContent.innerHTML = "";
+
+    if (!cachedParkingFeatures || cachedParkingFeatures.length === 0) {
+        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found in range.</div>`;
+        return;
+    }
+
+    let filtered = cachedParkingFeatures;
+    if (activeFilter !== "all") {
+        filtered = cachedParkingFeatures.filter(f => f.properties.status === activeFilter);
+    }
+
+    if (filtered.length === 0) {
+        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} parking zones found nearby.</div>`;
+        return;
+    }
+
+    filtered.sort((a, b) => a._distMiles - b._distMiles);
+
+    const topFeatures = filtered.slice(0, 15);
+
+    topFeatures.forEach(feat => {
+        const props = feat.properties;
+        const status = props.status;
+        const color = COLORS[status] || COLORS.free;
+
+        const card = document.createElement("div");
+        card.className = "parking-item-card";
+
+        let distLabel = "";
+        if (feat._distMiles < 0.1) {
+            distLabel = `${Math.round(feat._distMiles * 1760)} yd`;
+        } else {
+            distLabel = `${feat._distMiles.toFixed(2)} mi`;
+        }
+
+        const displayType = status === 'timed' ? 'TIMED / PERMIT' : status.toUpperCase();
+
+        card.innerHTML = `
+            <div class="item-top">
+                <span class="item-title">${props.name}</span>
+                <span class="item-dist">${distLabel}</span>
+            </div>
+            <div class="item-bottom">
+                <span class="item-badge" style="background:${color}"></span>
+                <span>${displayType} PARKING</span>
+            </div>
+        `;
+
+        card.addEventListener("click", () => {
+            let flyCoords = null;
+            if (feat.geometry && feat.geometry.coordinates) {
+                if (feat.geometry.type === "Point") {
+                    flyCoords = feat.geometry.coordinates;
+                } else if (feat.geometry.type === "LineString") {
+                    flyCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+                } else if (feat.geometry.type === "Polygon") {
+                    flyCoords = feat.geometry.coordinates[0][0];
+                }
+            }
+
+            showParkingDetails(props, flyCoords);
+
+            if (flyCoords && map) {
+                map.flyTo({ center: flyCoords, zoom: 17 });
+            }
+        });
+
+        panelContent.appendChild(card);
+    });
+}
+
+/* OVERPASS DATA FETCHING */
+async function updateParkingData() {
+    if (!map || navActive) return;
+    const zoom = map.getZoom();
+    if (zoom < 11) return; 
+
+    const center = map.getCenter();
+    const originPoint = playerCoords || [center.lng, center.lat];
+    document.getElementById("loader").classList.add("show");
+
+    const radius = zoom > 14 ? 1200 : 2500;
+    const query = `[out:json][timeout:15];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
+
+    const endpoints = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.k33g.org/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     ];
 
-    let currentMarkers = [];
-    let activeFilter = 'all';
-
-    map.on('load', () => {
-      lucide.createIcons();
-      executeSearch('Dover');
-    });
-
-    // Handle Search Execution
-    async function executeSearch(query) {
-      const statusEl = document.getElementById('statusText');
-      const resultsEl = document.getElementById('resultsList');
-      statusEl.style.display = 'block';
-      statusEl.textContent = 'Searching location...';
-      resultsEl.innerHTML = '';
-
-      try {
-        // Geocoding request
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}`
-        );
-        
-        if (!response.ok) throw new Error('Geocoding request failed');
-        
-        const data = await response.json();
-
-        if (data.features && data.features.length > 0) {
-          const [lng, lat] = data.features[0].center;
-
-          map.flyTo({ center: [lng, lat], zoom: 14, speed: 1.2 });
-
-          // Wait until map movement ends to fetch nearby spots
-          map.once('moveend', () => {
-            fetchNearbyParking(lng, lat);
-          });
-        } else {
-          statusEl.textContent = 'Location not found.';
+    let data = null;
+    for (let endpoint of endpoints) {
+        try {
+            const res = await fetch(endpoint, { method: "POST", body: "data=" + encodeURIComponent(query) });
+            if (res.ok) {
+                data = await res.json();
+                break;
+            }
+        } catch (err) {
+            console.warn(`Endpoint ${endpoint} failed, trying next...`);
         }
-      } catch (err) {
-        console.warn('Geocoding error, falling back to local dataset:', err);
-        // Fallback gracefully so UI never stays stuck
-        fetchNearbyParking(1.3134, 51.1279);
-      }
     }
 
-    // Load & display markers
-    function fetchNearbyParking(lng, lat) {
-      const statusEl = document.getElementById('statusText');
-      const resultsEl = document.getElementById('resultsList');
+    if (data && data.elements) {
+        const roads = [], lots = [];
+        cachedParkingFeatures = [];
+        const pt = turf.point(originPoint);
 
-      // Clear old markers
-      currentMarkers.forEach(m => m.remove());
-      currentMarkers = [];
+        data.elements.forEach(el => {
+            const tags = el.tags || {};
+            const status = classifyParking(tags);
+            const roadName = formatRoadName(tags);
+            const ruleText = getRuleText(tags);
 
-      const filtered = sampleParkings.filter(p => activeFilter === 'all' || p.type === activeFilter);
+            let feat = null;
 
-      if (filtered.length === 0) {
-        statusEl.textContent = 'No matching parking found.';
-        return;
-      }
+            if (tags.amenity === "parking" && el.geometry?.length > 2) {
+                feat = { 
+                    type: "Feature", 
+                    properties: { status, maxstay: ruleText, fee: tags.fee || 'Unknown', name: tags.name || 'Off-Street Parking Lot' }, 
+                    geometry: { type: "Polygon", coordinates: [el.geometry.map(p => [p.lon, p.lat])] }
+                };
+                lots.push(feat);
+            } else if (el.geometry?.length >= 2) {
+                feat = { 
+                    type: "Feature", 
+                    properties: { status, maxstay: ruleText, fee: tags.fee || 'None', name: roadName }, 
+                    geometry: { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) } 
+                };
+                roads.push(feat);
+            }
 
-      statusEl.style.display = 'none';
-
-      filtered.forEach(spot => {
-        const colorMap = {
-          free: '#22c55e',
-          paid: '#f97316',
-          timed: '#eab308',
-          'no-parking': '#ef4444',
-          hgv: '#a855f7'
-        };
-
-        const marker = new mapboxgl.Marker({ color: colorMap[spot.type] || '#22c55e' })
-          .setLngLat([spot.lng, spot.lat])
-          .setPopup(new mapboxgl.Popup().setText(spot.name))
-          .addTo(map);
-
-        currentMarkers.push(marker);
-
-        const item = document.createElement('div');
-        item.className = 'result-item';
-        item.textContent = spot.name;
-        item.onclick = () => {
-          map.flyTo({ center: [spot.lng, spot.lat], zoom: 16 });
-        };
-        resultsEl.appendChild(item);
-      });
-    }
-
-    // UI Event Listeners
-    document.getElementById('searchBtn').addEventListener('click', () => {
-      const q = document.getElementById('searchInput').value.trim();
-      if (q) executeSearch(q);
-    });
-
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const q = e.target.value.trim();
-        if (q) executeSearch(q);
-      }
-    });
-
-    // Filter Chips Toggle
-    document.querySelectorAll('.chip').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        activeFilter = e.currentTarget.getAttribute('data-filter');
-        const center = map.getCenter();
-        fetchNearbyParking(center.lng, center.lat);
-      });
-    });
-
-    // Toggle Hide/Show panel
-    function toggleNearestPanel() {
-      const panel = document.getElementById('nearestPanel');
-      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-    }
-
-    // Geolocation control
-    document.getElementById('locateBtn').addEventListener('click', () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          const { longitude, latitude } = pos.coords;
-          map.flyTo({ center: [longitude, latitude], zoom: 15 });
-          fetchNearbyParking(longitude, latitude);
+            if (feat && window.turf) {
+                try {
+                    let dist = 999;
+                    if (feat.geometry.type === "LineString") {
+                        dist = turf.pointToLineDistance(pt, feat, { units: 'miles' });
+                    } else if (feat.geometry.type === "Polygon") {
+                        const polyCenter = turf.centerOfMass(feat);
+                        dist = calculateDistanceMiles(originPoint, polyCenter.geometry.coordinates);
+                    }
+                    feat._distMiles = dist;
+                    cachedParkingFeatures.push(feat);
+                } catch (err) {
+                    feat._distMiles = 999;
+                }
+            }
         });
-      }
-    });
 
-    document.getElementById('recenterBtn').addEventListener('click', () => {
-      map.flyTo({ center: [1.3134, 51.1279], zoom: 14 });
+        if (map.getSource("overpass")) {
+            map.getSource("overpass").setData({ type: "FeatureCollection", features: roads });
+        }
+        if (map.getSource("parking-lots")) {
+            map.getSource("parking-lots").setData({ type: "FeatureCollection", features: lots });
+        }
+
+        renderSidePanel();
+    }
+
+    document.getElementById("loader").classList.remove("show");
+}
+
+/* INITIALIZE MAP */
+function initMap(center) {
+    if (map) { 
+        map.flyTo({ center: center, zoom: 16, essential: true });
+        setTimeout(updateParkingData, 300);
+        return; 
+    }
+    
+    map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: center,
+        zoom: 16,
+        attributionControl: false
     });
-  </script>
+    
+    map.on("load", () => {
+        const layers = map.getStyle().layers;
+        let labelLayerId;
+        for (let i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout && layers[i].layout['text-field']) {
+                labelLayerId = layers[i].id;
+                break;
+            }
+        }
+
+        map.addSource("overpass", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        map.addSource("parking-lots", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        
+        map.addLayer({ 
+            id: "lots-fill", 
+            type: "fill", 
+            source: "parking-lots", 
+            paint: { 
+                "fill-color": ["match", ["get", "status"], "free", COLORS.free, "paid", COLORS.paid, "timed", COLORS.timed, "hgv", COLORS.hgv, COLORS.restricted], 
+                "fill-opacity": 0.45 
+            } 
+        }, labelLayerId);
+
+        Object.entries(COLORS).forEach(([status, color]) => {
+            map.addLayer({ 
+                id: `layer-${status}`, 
+                type: "line", 
+                source: "overpass", 
+                filter: ["==", ["get", "status"], status], 
+                layout: {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                paint: { 
+                    "line-color": color, 
+                    "line-width": 8, 
+                    "line-opacity": 0.95 
+                } 
+            }, labelLayerId);
+        });
+
+        map.on("moveend", updateParkingData);
+        
+        map.on("click", (e) => {
+            if (navActive) return;
+            const layersToCheck = [...Object.keys(COLORS).map(s => `layer-${s}`), 'lots-fill'];
+            const features = map.queryRenderedFeatures(e.point, { layers: layersToCheck });
+            if (features.length) {
+                const clickCoords = [e.lngLat.lng, e.lngLat.lat];
+                showParkingDetails(features[0].properties, clickCoords);
+            }
+        });
+
+        updateParkingData();
+    });
+}
+
+function showParkingDetails(props, coords) {
+    const card = document.getElementById("parking-card");
+    selectedCardName = props.name || "Road Segment";
+    selectedCardCoords = coords || (map ? map.getCenter().toArray() : null);
+
+    document.getElementById("card-title").textContent = selectedCardName;
+    const statusText = props.status === 'timed' ? 'TIMED / PERMIT' : (props.status || "PARKING").toUpperCase();
+    document.getElementById("card-type").textContent = statusText + " PARKING";
+    
+    const badge = document.getElementById("card-status-badge");
+    badge.textContent = props.status;
+    badge.style.backgroundColor = COLORS[props.status] || COLORS.free;
+    badge.style.color = "#000";
+
+    document.getElementById("card-maxstay").textContent = props.maxstay || "No Limit";
+    document.getElementById("card-fee").textContent = props.fee || "None";
+    
+    card.classList.add("show");
+}
+
+/* ACTIONS */
+function locateMe() {
+    navigator.geolocation.getCurrentPosition(pos => {
+        const coords = [pos.coords.longitude, pos.coords.latitude];
+        const heading = pos.coords.heading || 0;
+
+        document.getElementById("home").classList.add("hidden");
+        document.getElementById("ui").classList.add("visible");
+        
+        if (!map) {
+            initMap(coords);
+            map.on('load', () => {
+                placePlayerMarker(coords, heading);
+                startWatching();
+            });
+        } else {
+            map.flyTo({ center: coords, zoom: 16, essential: true });
+            placePlayerMarker(coords, heading);
+            startWatching();
+            setTimeout(updateParkingData, 500);
+        }
+    }, () => {
+        alert("Location permissions are required to track location.");
+    });
+}
+
+function startWatching() {
+    if (watchId !== null) return;
+    watchId = navigator.geolocation.watchPosition(pos => {
+        const rawCoords = [pos.coords.longitude, pos.coords.latitude];
+        const rawHeading = pos.coords.heading || currentHeading || 0;
+        
+        const snap = processSnapToRoute(rawCoords, rawHeading);
+        
+        currentHeading = snap.heading;
+        placePlayerMarker(snap.snappedCoords, snap.heading);
+
+        if (navActive && map) {
+            map.easeTo({
+                center: snap.snappedCoords,
+                bearing: snap.heading,
+                pitch: 60,
+                zoom: 18,
+                duration: 800,
+                easing: (t) => t
+            });
+        }
+    }, null, { enableHighAccuracy: true });
+}
+
+async function handleSearch(inputId) {
+    const el = document.getElementById(inputId);
+    const val = el.value.trim();
+    if (!val) return;
+    el.blur();
+
+    const features = await fetchPlaces(val);
+    if (features.length) {
+        const coords = features[0].center;
+        document.getElementById("home").classList.add("hidden");
+        document.getElementById("ui").classList.add("visible");
+        
+        if (!map) {
+            initMap(coords);
+        } else {
+            map.flyTo({ center: coords, zoom: 16, essential: true });
+            setTimeout(updateParkingData, 500);
+        }
+    }
+}
+
+function stopNavigation() {
+    navActive = false;
+    
+    updateMarkerElement();
+    document.getElementById("route-status").classList.remove("show");
+    
+    if (map) {
+        map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+    }
+    
+    setParkingLayersVisibility(true);
+    clearRoute();
+    removeDestMarker();
+    updateParkingData();
+}
+
+/* EVENTS */
+document.getElementById("home-btn").addEventListener("click", () => handleSearch("home-input"));
+document.getElementById("map-btn").addEventListener("click", () => handleSearch("map-input"));
+document.getElementById("home-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("home-input"); });
+document.getElementById("map-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("map-input"); });
+
+document.getElementById("open-map-btn").addEventListener("click", () => {
+    document.getElementById("home").classList.add("hidden");
+    document.getElementById("ui").classList.add("visible");
+    initMap([-0.1276, 51.5072]);
+});
+
+document.getElementById("home-locate-btn").addEventListener("click", locateMe);
+document.getElementById("locate-btn").addEventListener("click", locateMe);
+
+/* SIDEBAR FILTER CHIP EVENT LISTENERS */
+document.querySelectorAll(".filter-chip").forEach(chip => {
+    chip.addEventListener("click", (e) => {
+        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+        const target = e.currentTarget;
+        target.classList.add("active");
+        
+        activeFilter = target.getAttribute("data-filter");
+        renderSidePanel();
+    });
+});
+
+document.getElementById("legend-toggle-btn").addEventListener("click", () => {
+    const leg = document.getElementById("legend");
+    leg.classList.toggle("hidden-legend");
+    document.getElementById("legend-toggle-btn").classList.toggle("active");
+});
+
+document.getElementById("nav-mode-btn").addEventListener("click", () => {
+    navModeOn = !navModeOn;
+    document.getElementById("dest-bar").classList.toggle("show", navModeOn);
+    document.getElementById("nav-mode-btn").classList.toggle("active", navModeOn);
+    if (!navModeOn) hideDestDropdown();
+});
+
+/* CARD NAVIGATE BUTTON EVENT */
+document.getElementById("card-nav-btn").addEventListener("click", () => {
+    if (selectedCardCoords) {
+        startRoutingToCoords(selectedCardCoords, selectedCardName);
+    }
+});
+
+/* LIVE AUTOCOMPLETE / DROPDOWN INPUT LISTENER */
+document.getElementById("dest-input").addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimeout);
+    const val = e.target.value;
+    searchDebounceTimeout = setTimeout(() => {
+        renderDestDropdown(val);
+    }, 250);
+});
+
+document.getElementById("dest-search-btn").addEventListener("click", handleDestinationSubmit);
+document.getElementById("dest-input").addEventListener("keypress", (e) => { 
+    if(e.key === "Enter") handleDestinationSubmit(); 
+});
+
+document.getElementById("dest-cancel-btn").addEventListener("click", () => {
+    document.getElementById("dest-bar").classList.remove("show");
+    document.getElementById("nav-mode-btn").classList.remove("active");
+    hideDestDropdown();
+});
+
+document.getElementById("nav-go-btn").addEventListener("click", () => {
+    navActive = true;
+    
+    updateMarkerElement();
+    setParkingLayersVisibility(false);
+
+    document.getElementById("nav-panel").classList.remove("show");
+    document.getElementById("route-status").classList.add("show");
+    
+    if (playerCoords && map) {
+        map.easeTo({
+            center: playerCoords,
+            pitch: 60,
+            bearing: currentHeading,
+            zoom: 18,
+            duration: 1200
+        });
+    }
+    
+    startWatching();
+});
+
+document.getElementById("nav-cancel-btn").addEventListener("click", () => {
+    document.getElementById("nav-panel").classList.remove("show");
+    clearRoute();
+    removeDestMarker();
+});
+
+document.getElementById("rs-end-btn").addEventListener("click", stopNavigation);
+
+document.getElementById("card-close-btn").addEventListener("click", () => {
+    document.getElementById("parking-card").classList.remove("show");
+});
+</script>
 </body>
 </html>
