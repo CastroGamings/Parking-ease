@@ -1,5 +1,3 @@
-Working app
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -233,24 +231,24 @@ Working app
             display: block;
         }
 
-        /* SIDE PANEL FOR CLOSEST PARKING */
+        /* COMPACT SIDE PANEL FOR CLOSEST PARKING */
         .parking-side-panel {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 80px);
-            left: 16px;
-            width: 290px;
-            max-height: calc(100vh - 120px);
+            top: calc(env(safe-area-inset-top, 0px) + 85px);
+            left: 12px;
+            width: 200px;
+            max-height: 220px;
             pointer-events: auto;
             z-index: 900;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-radius: 20px;
+            border-radius: 16px;
         }
 
         .side-panel-header {
-            padding: 14px 16px 10px;
-            font-size: 0.9rem;
+            padding: 8px 10px 6px;
+            font-size: 0.75rem;
             font-weight: 700;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.2);
@@ -260,8 +258,8 @@ Working app
         /* FILTER CHIPS ROW */
         .filter-bar {
             display: flex;
-            gap: 6px;
-            padding: 8px 12px;
+            gap: 4px;
+            padding: 6px 8px;
             overflow-x: auto;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.15);
@@ -273,9 +271,9 @@ Working app
         }
 
         .filter-chip {
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 100px;
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 700;
             color: var(--text-sub);
             background: rgba(255, 255, 255, 0.06);
@@ -285,7 +283,7 @@ Working app
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
 
         .filter-chip:hover {
@@ -301,23 +299,23 @@ Working app
         }
 
         .chip-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
         }
 
         .side-panel-content {
-            padding: 10px;
+            padding: 6px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .side-panel-content::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
         .side-panel-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
@@ -327,8 +325,8 @@ Working app
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 10px 12px;
+            border-radius: 10px;
+            padding: 6px 8px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -342,39 +340,39 @@ Working app
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .item-title {
-            font-size: 0.82rem;
+            font-size: 0.72rem;
             font-weight: 700;
             color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 160px;
+            max-width: 110px;
         }
 
         .item-dist {
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 700;
             color: #60a5fa;
             background: rgba(37, 99, 235, 0.2);
-            padding: 2px 6px;
-            border-radius: 6px;
+            padding: 1px 4px;
+            border-radius: 4px;
         }
 
         .item-bottom {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
+            gap: 4px;
+            font-size: 0.65rem;
             color: var(--text-sub);
         }
 
         .item-badge {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -965,7 +963,7 @@ Working app
     <div id="nav-panel" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon">🗺️</div>
+                <div class="card-icon">🚘</div>
                 <div>
                     <div id="nav-dest-name" class="card-title">Selected Point</div>
                     <div class="card-subtitle">Calculated Route Details</div>
@@ -1395,9 +1393,6 @@ function classifyParking(tags) {
     }
 
     // 3. Check for TIMED / PERMIT / RESTRICTED TIME PARKING (Yellow Marker)
-    // - Single yellow lines (restricted hours/times)
-    // - Resident / Permit holder zones
-    // - Maxstay limits / Disc parking / Time intervals
     const hasSingleYellowLine = 
         tags['parking:lane:both:yellow_line'] === 'single' ||
         tags['parking:lane:left:yellow_line'] === 'single' ||
