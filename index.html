@@ -231,13 +231,13 @@
             display: block;
         }
 
-        /* STRICT COMPACT SIDE PANEL - FIXED LAYOUT */
+        /* STRICT COMPACT SIDE PANEL - STRICT FLEXBOX LOCK */
         .parking-side-panel {
             position: absolute !important;
             top: calc(env(safe-area-inset-top, 0px) + 75px) !important;
             left: 10px !important;
-            width: 220px !important;
-            max-height: 260px !important;
+            width: 230px !important;
+            max-height: 280px !important;
             pointer-events: auto !important;
             z-index: 800 !important;
             display: flex !important;
@@ -248,11 +248,11 @@
         }
 
         .parking-side-panel.collapsed {
-            max-height: 36px !important;
+            max-height: 38px !important;
         }
 
         .side-panel-header {
-            padding: 8px 10px !important;
+            padding: 8px 12px !important;
             font-size: 0.75rem !important;
             font-weight: 700 !important;
             border-bottom: 1px solid var(--panel-border);
@@ -273,12 +273,12 @@
             border-radius: 6px;
         }
 
-        /* FILTER CHIPS ROW - LOCKED ABOVE CONTENT */
+        /* FILTER CHIPS ROW - PINNED TOP */
         .filter-bar {
-            display: flex;
+            display: flex !important;
             gap: 4px;
-            padding: 6px 8px;
-            overflow-x: auto;
+            padding: 6px 8px !important;
+            overflow-x: auto !important;
             flex-shrink: 0 !important;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.25);
@@ -299,6 +299,7 @@
             border: 1px solid rgba(255, 255, 255, 0.12);
             cursor: pointer;
             white-space: nowrap;
+            flex-shrink: 0 !important;
         }
 
         .filter-chip.active {
@@ -320,6 +321,7 @@
             padding: 6px !important;
             overflow-y: auto !important;
             flex: 1 1 auto !important;
+            min-height: 0 !important; /* CRITICAL FOR FLEX SCROLLING */
             display: flex;
             flex-direction: column;
             gap: 6px !important;
@@ -331,6 +333,7 @@
             border-radius: 10px !important;
             padding: 6px 8px !important;
             cursor: pointer;
+            flex-shrink: 0;
         }
 
         .item-top {
@@ -374,7 +377,7 @@
             display: inline-block;
         }
 
-        /* SEARCH BAR & DROPDOWN HIGH Z-INDEX */
+        /* SEARCH BAR & DROPDOWN */
         #top-bar {
             position: absolute;
             top: calc(env(safe-area-inset-top, 0px) + 12px);
@@ -1496,7 +1499,7 @@ async function updateParkingData() {
     const originPoint = playerCoords || [center.lng, center.lat];
     document.getElementById("loader").classList.add("show");
 
-    const radius = zoom > 14 ? 1200 : 2500;
+    const radius = zoom > 14 ? 1500 : 3000;
     const query = `[out:json][timeout:15];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
 
     const endpoints = [
@@ -1577,7 +1580,8 @@ async function updateParkingData() {
 function initMap(center) {
     if (map) { 
         map.flyTo({ center: center, zoom: 16, essential: true });
-        setTimeout(updateParkingData, 300);
+        setParkingLayersVisibility(true);
+        setTimeout(updateParkingData, 400);
         return; 
     }
     
@@ -1676,6 +1680,7 @@ function locateMe() {
         } else {
             map.flyTo({ center: coords, zoom: 16, essential: true });
             placePlayerMarker(coords, heading);
+            setParkingLayersVisibility(true);
             startWatching();
             setTimeout(updateParkingData, 500);
         }
@@ -1722,8 +1727,11 @@ async function handleSearch(inputId) {
         if (!map) {
             initMap(coords);
         } else {
+            setParkingLayersVisibility(true);
             map.flyTo({ center: coords, zoom: 16, essential: true });
-            setTimeout(updateParkingData, 500);
+            map.once('moveend', () => {
+                updateParkingData();
+            });
         }
     }
 }
