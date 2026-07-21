@@ -69,8 +69,8 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--panel-border);
-            border-radius: 24px;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
         }
 
         /* WELCOME / HOME SCREEN */
@@ -231,26 +231,26 @@
             display: block;
         }
 
-        /* SIDE PANEL FOR CLOSEST PARKING */
+        /* MOBILE-FRIENDLY SIDE PANEL FOR CLOSEST PARKING */
         .parking-side-panel {
             position: absolute;
-            top: calc(env(safe-area-inset-top) + 90px);
-            left: 12px;
+            top: calc(env(safe-area-inset-top, 0px) + 84px);
+            left: 10px;
 
-            width: 310px;
-            max-width: 78vw;
+            width: 220px;
+            max-width: 50vw;
 
-            height: 240px;          /* Smaller */
-            max-height: 40vh;       /* Never take more than 40% of screen */
+            height: 230px;
+            max-height: 38vh;
 
             display: flex;
             flex-direction: column;
 
             overflow: hidden;
 
-            border-radius: 22px;
+            border-radius: 18px;
             z-index: 900;
-            transition: .3s;
+            transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: auto;
         }
 
@@ -258,31 +258,40 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            font-size: 0.9rem;
+            padding: 10px 12px;
+            font-size: 0.78rem;
             font-weight: 700;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.2);
-            letter-spacing: 0.02em;
+            letter-spacing: -0.01em;
+        }
+
+        .side-panel-header span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 4px;
         }
 
         #toggleParkingPanel {
-            width: 34px;
-            height: 34px;
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
             border: none;
             border-radius: 50%;
-            background: #1f4cff;
+            background: #2563eb;
             color: white;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
         }
 
         /* COLLAPSED STATE */
         .parking-side-panel.collapsed {
-            height: 58px;
+            height: 48px;
         }
 
         .parking-side-panel.collapsed .side-panel-content {
@@ -296,22 +305,22 @@
         /* FILTER CHIPS ROW */
         .filter-bar {
             display: flex;
-            gap: 6px;
-            padding: 8px 12px;
+            gap: 5px;
+            padding: 6px 10px;
             overflow-x: auto;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.15);
-            scrollbar-width: none; /* Firefox */
+            scrollbar-width: none;
         }
 
         .filter-bar::-webkit-scrollbar {
-            display: none; /* Safari and Chrome */
+            display: none;
         }
 
         .filter-chip {
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 100px;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 700;
             color: var(--text-sub);
             background: rgba(255, 255, 255, 0.06);
@@ -321,7 +330,7 @@
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
 
         .filter-chip:hover {
@@ -337,8 +346,8 @@
         }
 
         .chip-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -348,25 +357,25 @@
             flex: 1;
             overflow-y: auto;
             overscroll-behavior: contain;
-            padding: 10px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .side-panel-content::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
         .side-panel-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 10px 12px;
+            border-radius: 10px;
+            padding: 8px 10px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -380,39 +389,39 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .item-title {
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 160px;
+            max-width: 120px;
         }
 
         .item-dist {
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 700;
             color: #60a5fa;
             background: rgba(37, 99, 235, 0.2);
-            padding: 2px 6px;
-            border-radius: 6px;
+            padding: 1px 5px;
+            border-radius: 4px;
         }
 
         .item-bottom {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
+            gap: 5px;
+            font-size: 0.68rem;
             color: var(--text-sub);
         }
 
         .item-badge {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -421,17 +430,17 @@
         /* SEARCH BAR & DROPDOWN */
         #top-bar {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            top: calc(env(safe-area-inset-top, 0px) + 14px);
             left: 50%;
             transform: translateX(-50%);
-            width: min(440px, 92vw);
+            width: min(440px, 94vw);
             pointer-events: auto;
         }
 
         .search-glass {
             display: flex;
             align-items: center;
-            padding: 6px 6px 6px 18px;
+            padding: 5px 5px 5px 16px;
         }
 
         #map-input {
@@ -440,7 +449,7 @@
             border: none;
             outline: none;
             color: #fff;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
         }
 
@@ -449,8 +458,8 @@
         }
 
         .icon-btn {
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             border: none;
             background: var(--primary-blue);
@@ -535,18 +544,18 @@
         /* FAB CONTROLS */
         .fab-group {
             position: absolute;
-            right: 16px;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+            right: 14px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             pointer-events: auto;
             z-index: 10;
         }
 
         .fab {
-            width: 52px;
-            height: 52px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             border: 1px solid var(--panel-border);
             background: var(--panel-bg);
@@ -573,12 +582,13 @@
         /* LEGEND */
         #legend {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 76px);
-            right: 16px;
-            padding: 14px 16px;
+            top: calc(env(safe-area-inset-top, 0px) + 84px);
+            right: 10px;
+            padding: 10px 12px;
             pointer-events: auto;
             transition: opacity 0.2s, transform 0.2s;
             transform-origin: top right;
+            max-width: 42vw;
         }
 
         #legend.hidden-legend {
@@ -590,11 +600,12 @@
         .leg-mini {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.78rem;
+            gap: 8px;
+            font-size: 0.72rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.85);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            white-space: nowrap;
         }
 
         .leg-mini:last-child {
@@ -602,11 +613,11 @@
         }
 
         .dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             flex-shrink: 0;
-            box-shadow: 0 0 8px currentColor;
+            box-shadow: 0 0 6px currentColor;
         }
 
         /* LOADER */
@@ -898,10 +909,8 @@
     <!-- LEFT SIDEBAR: NEARBY PARKING ZONES WITH FILTER BUTTONS -->
     <div id="parking-side-panel" class="glass-panel parking-side-panel">
         <div class="side-panel-header">
-            <span>Nearest Parking Zones</span>
-            <button id="toggleParkingPanel">
-                ▼
-            </button>
+            <span>Nearest Parking</span>
+            <button id="toggleParkingPanel">▼</button>
         </div>
         
         <!-- PARKING TYPE FILTER BAR -->
@@ -915,7 +924,7 @@
         </div>
 
         <div id="side-panel-content" class="side-panel-content">
-            <div style="font-size: 0.75rem; color: var(--text-sub); text-align: center; padding: 10px;">
+            <div style="font-size: 0.72rem; color: var(--text-sub); text-align: center; padding: 10px;">
                 Searching location...
             </div>
         </div>
@@ -952,7 +961,7 @@
     <div id="legend" class="glass-panel">
         <div class="leg-mini"><div class="dot" style="background:var(--color-free)"></div>Free Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
-        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed / Permit Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed / Permit</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Parking</div>
     </div>
@@ -964,13 +973,13 @@
 
     <div class="fab-group">
         <button id="legend-toggle-btn" class="fab" title="Toggle Legend">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
         </button>
         <button id="nav-mode-btn" class="fab" title="Navigation Mode">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
         </button>
         <button id="locate-btn" class="fab" title="My Location">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
         </button>
     </div>
 
@@ -1077,7 +1086,7 @@ btn.onclick = () => {
 
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
-    const R = 3958.8; // Radius of Earth in miles
+    const R = 3958.8;
     const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
     const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -1447,9 +1456,6 @@ function classifyParking(tags) {
     }
 
     // 3. Check for TIMED / PERMIT / RESTRICTED TIME PARKING (Yellow Marker)
-    // - Single yellow lines (restricted hours/times)
-    // - Resident / Permit holder zones
-    // - Maxstay limits / Disc parking / Time intervals
     const hasSingleYellowLine = 
         tags['parking:lane:both:yellow_line'] === 'single' ||
         tags['parking:lane:left:yellow_line'] === 'single' ||
@@ -1540,7 +1546,7 @@ function renderSidePanel() {
     panelContent.innerHTML = "";
 
     if (!cachedParkingFeatures || cachedParkingFeatures.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found in range.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found in range.</div>`;
         return;
     }
 
@@ -1550,7 +1556,7 @@ function renderSidePanel() {
     }
 
     if (filtered.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} parking zones found nearby.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} parking zones found nearby.</div>`;
         return;
     }
 
@@ -1573,7 +1579,7 @@ function renderSidePanel() {
             distLabel = `${feat._distMiles.toFixed(2)} mi`;
         }
 
-        const displayType = status === 'timed' ? 'TIMED / PERMIT' : status.toUpperCase();
+        const displayType = status === 'timed' ? 'TIMED' : status.toUpperCase();
 
         card.innerHTML = `
             <div class="item-top">
