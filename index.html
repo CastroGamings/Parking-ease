@@ -69,8 +69,8 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--panel-border);
-            border-radius: 20px;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
         }
 
         /* WELCOME / HOME SCREEN */
@@ -231,82 +231,45 @@
             display: block;
         }
 
-        /* MOBILE-FRIENDLY SIDE PANEL FOR CLOSEST PARKING */
+        /* COMPACT BOTTOM-RIGHT PARKING PANEL */
         .parking-side-panel {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 84px);
-            left: 10px;
-
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 220px);
+            right: 16px;
             width: 220px;
-            max-width: 50vw;
-
-            height: 230px;
-            max-height: 38vh;
-
+            max-height: 200px;
+            pointer-events: auto;
+            z-index: 900;
             display: flex;
             flex-direction: column;
-
             overflow: hidden;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
 
-            border-radius: 18px;
-            z-index: 900;
-            transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: auto;
+        .parking-side-panel.expanded {
+            width: 280px;
+            max-height: 380px;
         }
 
         .side-panel-header {
+            padding: 10px 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0, 0, 0, 0.3);
+            letter-spacing: 0.02em;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 12px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            border-bottom: 1px solid var(--panel-border);
-            background: rgba(0, 0, 0, 0.2);
-            letter-spacing: -0.01em;
-        }
-
-        .side-panel-header span {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding-right: 4px;
-        }
-
-        #toggleParkingPanel {
-            width: 28px;
-            height: 28px;
-            flex-shrink: 0;
-            border: none;
-            border-radius: 50%;
-            background: #2563eb;
-            color: white;
             cursor: pointer;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
-        }
-
-        /* COLLAPSED STATE */
-        .parking-side-panel.collapsed {
-            height: 48px;
-        }
-
-        .parking-side-panel.collapsed .side-panel-content {
-            display: none;
-        }
-
-        .parking-side-panel.collapsed .filter-bar {
-            display: none;
         }
 
         /* FILTER CHIPS ROW */
         .filter-bar {
             display: flex;
-            gap: 5px;
-            padding: 6px 10px;
+            gap: 4px;
+            padding: 6px 8px;
             overflow-x: auto;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.15);
@@ -354,10 +317,8 @@
         }
 
         .side-panel-content {
-            flex: 1;
+            padding: 6px;
             overflow-y: auto;
-            overscroll-behavior: contain;
-            padding: 8px;
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -368,7 +329,7 @@
         }
         .side-panel-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
+            border-radius: 4px;
         }
 
         .parking-item-card {
@@ -389,7 +350,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .item-title {
@@ -420,8 +381,8 @@
         }
 
         .item-badge {
-            width: 7px;
-            height: 7px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -430,17 +391,17 @@
         /* SEARCH BAR & DROPDOWN */
         #top-bar {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 14px);
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
             left: 50%;
             transform: translateX(-50%);
-            width: min(440px, 94vw);
+            width: min(440px, 92vw);
             pointer-events: auto;
         }
 
         .search-glass {
             display: flex;
             align-items: center;
-            padding: 5px 5px 5px 16px;
+            padding: 6px 6px 6px 18px;
         }
 
         #map-input {
@@ -449,7 +410,7 @@
             border: none;
             outline: none;
             color: #fff;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             font-weight: 500;
         }
 
@@ -458,8 +419,8 @@
         }
 
         .icon-btn {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: none;
             background: var(--primary-blue);
@@ -544,18 +505,18 @@
         /* FAB CONTROLS */
         .fab-group {
             position: absolute;
-            right: 14px;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+            right: 16px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
             pointer-events: auto;
             z-index: 10;
         }
 
         .fab {
-            width: 48px;
-            height: 48px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             border: 1px solid var(--panel-border);
             background: var(--panel-bg);
@@ -582,13 +543,12 @@
         /* LEGEND */
         #legend {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 84px);
-            right: 10px;
-            padding: 10px 12px;
+            top: calc(env(safe-area-inset-top, 0px) + 76px);
+            right: 16px;
+            padding: 14px 16px;
             pointer-events: auto;
             transition: opacity 0.2s, transform 0.2s;
             transform-origin: top right;
-            max-width: 42vw;
         }
 
         #legend.hidden-legend {
@@ -600,12 +560,11 @@
         .leg-mini {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.72rem;
+            gap: 10px;
+            font-size: 0.78rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.85);
-            margin-bottom: 6px;
-            white-space: nowrap;
+            margin-bottom: 8px;
         }
 
         .leg-mini:last-child {
@@ -613,11 +572,11 @@
         }
 
         .dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
-            box-shadow: 0 0 6px currentColor;
+            box-shadow: 0 0 8px currentColor;
         }
 
         /* LOADER */
@@ -906,11 +865,11 @@
 
 <!-- MAP OVERLAYS -->
 <div id="ui">
-    <!-- LEFT SIDEBAR: NEARBY PARKING ZONES WITH FILTER BUTTONS -->
+    <!-- BOTTOM RIGHT SMALL PARKING PANEL -->
     <div id="parking-side-panel" class="glass-panel parking-side-panel">
-        <div class="side-panel-header">
+        <div id="side-panel-toggle" class="side-panel-header">
             <span>Nearest Parking</span>
-            <button id="toggleParkingPanel">▼</button>
+            <span id="expand-icon" style="font-size: 0.7rem; opacity: 0.7;">▲</span>
         </div>
         
         <!-- PARKING TYPE FILTER BAR -->
@@ -924,7 +883,7 @@
         </div>
 
         <div id="side-panel-content" class="side-panel-content">
-            <div style="font-size: 0.72rem; color: var(--text-sub); text-align: center; padding: 10px;">
+            <div style="font-size: 0.7rem; color: var(--text-sub); text-align: center; padding: 8px;">
                 Searching location...
             </div>
         </div>
@@ -961,7 +920,7 @@
     <div id="legend" class="glass-panel">
         <div class="leg-mini"><div class="dot" style="background:var(--color-free)"></div>Free Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
-        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed / Permit</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed / Permit Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Parking</div>
     </div>
@@ -973,13 +932,13 @@
 
     <div class="fab-group">
         <button id="legend-toggle-btn" class="fab" title="Toggle Legend">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
         </button>
         <button id="nav-mode-btn" class="fab" title="Navigation Mode">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
         </button>
         <button id="locate-btn" class="fab" title="My Location">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
         </button>
     </div>
 
@@ -1075,18 +1034,9 @@ let selectedCardName = "";
 let cachedParkingFeatures = [];
 let activeFilter = "all";
 
-/* COLLAPSIBLE SIDE PANEL JS */
-const panel = document.getElementById("parking-side-panel");
-const btn = document.getElementById("toggleParkingPanel");
-
-btn.onclick = () => {
-    panel.classList.toggle("collapsed");
-    btn.innerHTML = panel.classList.contains("collapsed") ? "▲" : "▼";
-};
-
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
-    const R = 3958.8;
+    const R = 3958.8; // Radius of Earth in miles
     const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
     const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -1415,7 +1365,6 @@ async function handleDestinationSubmit() {
 
 /* PARKING LOGIC */
 function classifyParking(tags) {
-    // 1. Check HGV designation first
     if (
         tags.hgv === "designated" || tags.hgv === "yes" ||
         tags.truck === "yes" || tags["parking:hgv"] === "yes" ||
@@ -1423,7 +1372,6 @@ function classifyParking(tags) {
         tags.amenity === "truck_parking"
     ) return "hgv";
 
-    // 2. Check strict NO PARKING / NO WAITING AT ALL TIMES (Red - Restricted)
     const hasDoubleYellowLine = 
         tags['parking:lane:both:yellow_line'] === 'double' ||
         tags['parking:lane:left:yellow_line'] === 'double' ||
@@ -1455,7 +1403,6 @@ function classifyParking(tags) {
         return "restricted";
     }
 
-    // 3. Check for TIMED / PERMIT / RESTRICTED TIME PARKING (Yellow Marker)
     const hasSingleYellowLine = 
         tags['parking:lane:both:yellow_line'] === 'single' ||
         tags['parking:lane:left:yellow_line'] === 'single' ||
@@ -1503,7 +1450,6 @@ function classifyParking(tags) {
         return "timed";
     }
 
-    // 4. Paid parking
     if (
         tags.fee === "yes" || 
         tags['parking:lane:both'] === 'paid' || tags['parking:lane:left'] === 'paid' || tags['parking:lane:right'] === 'paid' ||
@@ -1511,7 +1457,6 @@ function classifyParking(tags) {
         tags['parking:both:fee'] === 'yes' || tags['parking:left:fee'] === 'yes' || tags['parking:right:fee'] === 'yes'
     ) return "paid";
 
-    // 5. Major thoroughfares & private roads
     if (["motorway", "trunk", "primary"].includes(tags.highway) || tags.access === 'private' || tags.parking === 'private') return "restricted";
 
     return "free";
@@ -1540,13 +1485,13 @@ function getRuleText(tags) {
     return "Restricted Times / Permit";
 }
 
-/* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES WITH FILTER SUPPORT */
+/* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES */
 function renderSidePanel() {
     const panelContent = document.getElementById("side-panel-content");
     panelContent.innerHTML = "";
 
     if (!cachedParkingFeatures || cachedParkingFeatures.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found in range.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.7rem; color:var(--text-sub); text-align:center; padding:8px;">No parking zones found.</div>`;
         return;
     }
 
@@ -1556,12 +1501,11 @@ function renderSidePanel() {
     }
 
     if (filtered.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} parking zones found nearby.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.7rem; color:var(--text-sub); text-align:center; padding:8px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
         return;
     }
 
     filtered.sort((a, b) => a._distMiles - b._distMiles);
-
     const topFeatures = filtered.slice(0, 15);
 
     topFeatures.forEach(feat => {
@@ -1579,7 +1523,7 @@ function renderSidePanel() {
             distLabel = `${feat._distMiles.toFixed(2)} mi`;
         }
 
-        const displayType = status === 'timed' ? 'TIMED' : status.toUpperCase();
+        const displayType = status === 'timed' ? 'TIMED / PERMIT' : status.toUpperCase();
 
         card.innerHTML = `
             <div class="item-top">
@@ -1900,6 +1844,14 @@ document.getElementById("open-map-btn").addEventListener("click", () => {
 
 document.getElementById("home-locate-btn").addEventListener("click", locateMe);
 document.getElementById("locate-btn").addEventListener("click", locateMe);
+
+/* TOGGLE COMPACT PANEL EXPANSION */
+document.getElementById("side-panel-toggle").addEventListener("click", () => {
+    const panel = document.getElementById("parking-side-panel");
+    const icon = document.getElementById("expand-icon");
+    panel.classList.toggle("expanded");
+    icon.textContent = panel.classList.contains("expanded") ? "▼" : "▲";
+});
 
 /* SIDEBAR FILTER CHIP EVENT LISTENERS */
 document.querySelectorAll(".filter-chip").forEach(chip => {
