@@ -231,35 +231,66 @@
             display: block;
         }
 
-        /* SIDE PANEL FOR CLOSEST PARKING */
+        /* COMPACT RIGHT SIDE PANEL FOR CLOSEST PARKING */
         .parking-side-panel {
             position: absolute;
             top: calc(env(safe-area-inset-top, 0px) + 80px);
-            left: 16px;
-            width: 290px;
-            max-height: calc(100vh - 120px);
+            right: 12px;
+            left: auto;
+            width: min(240px, 60vw);
+            max-height: min(400px, 45vh);
             pointer-events: auto;
             z-index: 900;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-radius: 20px;
+            border-radius: 16px;
+            transition: all 0.3s ease;
         }
 
         .side-panel-header {
-            padding: 14px 16px 10px;
-            font-size: 0.9rem;
+            padding: 10px 12px;
+            font-size: 0.78rem;
             font-weight: 700;
             border-bottom: 1px solid var(--panel-border);
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.25);
             letter-spacing: 0.02em;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .panel-toggle-arrow {
+            transition: transform 0.3s ease;
+            opacity: 0.8;
+            flex-shrink: 0;
+        }
+
+        .parking-side-panel.collapsed .panel-toggle-arrow {
+            transform: rotate(-180deg);
+        }
+
+        .panel-collapsible-body {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-height: 350px;
+            transition: max-height 0.3s ease, opacity 0.2s ease;
+        }
+
+        .parking-side-panel.collapsed .panel-collapsible-body {
+            max-height: 0 !important;
+            opacity: 0;
+            pointer-events: none;
         }
 
         /* FILTER CHIPS ROW */
         .filter-bar {
             display: flex;
-            gap: 6px;
-            padding: 8px 12px;
+            gap: 4px;
+            padding: 6px 8px;
             overflow-x: auto;
             border-bottom: 1px solid var(--panel-border);
             background: rgba(0, 0, 0, 0.15);
@@ -271,9 +302,9 @@
         }
 
         .filter-chip {
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 100px;
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 700;
             color: var(--text-sub);
             background: rgba(255, 255, 255, 0.06);
@@ -283,7 +314,7 @@
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
 
         .filter-chip:hover {
@@ -299,23 +330,23 @@
         }
 
         .chip-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
         }
 
         .side-panel-content {
-            padding: 10px;
+            padding: 6px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .side-panel-content::-webkit-scrollbar {
-            width: 4px;
+            width: 3px;
         }
         .side-panel-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
@@ -325,8 +356,8 @@
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 10px 12px;
+            border-radius: 10px;
+            padding: 8px 10px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -340,39 +371,39 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .item-title {
-            font-size: 0.82rem;
+            font-size: 0.75rem;
             font-weight: 700;
             color: #fff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 160px;
+            max-width: 120px;
         }
 
         .item-dist {
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 700;
             color: #60a5fa;
             background: rgba(37, 99, 235, 0.2);
-            padding: 2px 6px;
-            border-radius: 6px;
+            padding: 2px 5px;
+            border-radius: 4px;
         }
 
         .item-bottom {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
+            gap: 4px;
+            font-size: 0.65rem;
             color: var(--text-sub);
         }
 
         .item-badge {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -530,15 +561,17 @@
             border-color: var(--primary-blue);
         }
 
-        /* LEGEND */
+        /* LEGEND - Positioned below the right side panel */
         #legend {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 0px) + 76px);
-            right: 16px;
-            padding: 14px 16px;
+            top: calc(env(safe-area-inset-top, 0px) + 80px);
+            left: 12px;
+            right: auto;
+            padding: 10px 12px;
             pointer-events: auto;
             transition: opacity 0.2s, transform 0.2s;
-            transform-origin: top right;
+            transform-origin: top left;
+            border-radius: 16px;
         }
 
         #legend.hidden-legend {
@@ -550,11 +583,11 @@
         .leg-mini {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.78rem;
+            gap: 8px;
+            font-size: 0.72rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.85);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .leg-mini:last-child {
@@ -562,8 +595,8 @@
         }
 
         .dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             flex-shrink: 0;
             box-shadow: 0 0 8px currentColor;
@@ -818,6 +851,22 @@
             transform: rotate(-45deg);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
         }
+
+        /* RESPONSIVE MOBILE ADJUSTMENTS FOR SIDE PANEL */
+        @media (max-width: 600px) {
+            .parking-side-panel {
+                width: 190px;
+                right: 8px;
+                top: calc(env(safe-area-inset-top, 0px) + 72px);
+            }
+            .item-title {
+                max-width: 90px;
+            }
+            #legend {
+                left: 8px;
+                top: calc(env(safe-area-inset-top, 0px) + 72px);
+            }
+        }
     </style>
 </head>
 <body>
@@ -855,23 +904,30 @@
 
 <!-- MAP OVERLAYS -->
 <div id="ui">
-    <!-- LEFT SIDEBAR: NEARBY PARKING ZONES WITH FILTER BUTTONS -->
+    <!-- COMPACT COLLAPSIBLE RIGHT SIDEBAR: NEARBY PARKING ZONES -->
     <div id="parking-side-panel" class="glass-panel parking-side-panel">
-        <div class="side-panel-header">Nearest Parking Zones</div>
-        
-        <!-- PARKING TYPE FILTER BAR -->
-        <div class="filter-bar">
-            <button class="filter-chip active" data-filter="all">All</button>
-            <button class="filter-chip" data-filter="free"><span class="chip-dot" style="background:var(--color-free)"></span>Free</button>
-            <button class="filter-chip" data-filter="paid"><span class="chip-dot" style="background:var(--color-paid)"></span>Paid</button>
-            <button class="filter-chip" data-filter="timed"><span class="chip-dot" style="background:var(--color-timed)"></span>Timed/Permit</button>
-            <button class="filter-chip" data-filter="restricted"><span class="chip-dot" style="background:var(--color-restricted)"></span>No Parking</button>
-            <button class="filter-chip" data-filter="hgv"><span class="chip-dot" style="background:var(--color-hgv)"></span>HGV</button>
+        <div id="side-panel-header" class="side-panel-header">
+            <span>Nearest Parking</span>
+            <svg class="panel-toggle-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
         </div>
+        
+        <div id="panel-collapsible-body" class="panel-collapsible-body">
+            <!-- PARKING TYPE FILTER BAR -->
+            <div class="filter-bar">
+                <button class="filter-chip active" data-filter="all">All</button>
+                <button class="filter-chip" data-filter="free"><span class="chip-dot" style="background:var(--color-free)"></span>Free</button>
+                <button class="filter-chip" data-filter="paid"><span class="chip-dot" style="background:var(--color-paid)"></span>Paid</button>
+                <button class="filter-chip" data-filter="timed"><span class="chip-dot" style="background:var(--color-timed)"></span>Timed</button>
+                <button class="filter-chip" data-filter="restricted"><span class="chip-dot" style="background:var(--color-restricted)"></span>No Parking</button>
+                <button class="filter-chip" data-filter="hgv"><span class="chip-dot" style="background:var(--color-hgv)"></span>HGV</button>
+            </div>
 
-        <div id="side-panel-content" class="side-panel-content">
-            <div style="font-size: 0.75rem; color: var(--text-sub); text-align: center; padding: 10px;">
-                Searching location...
+            <div id="side-panel-content" class="side-panel-content">
+                <div style="font-size: 0.72rem; color: var(--text-sub); text-align: center; padding: 10px;">
+                    Searching location...
+                </div>
             </div>
         </div>
     </div>
@@ -891,7 +947,7 @@
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close">✕</button>
+            <button id="dest-cancel-btn" class="card-close"></button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -907,7 +963,7 @@
     <div id="legend" class="glass-panel">
         <div class="leg-mini"><div class="dot" style="background:var(--color-free)"></div>Free Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
-        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed / Permit Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Parking</div>
     </div>
@@ -932,13 +988,13 @@
     <div id="parking-card" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon">🅿️</div>
+                <div class="card-icon"></div>
                 <div>
                     <div id="card-title" class="card-title">Unknown Road</div>
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close">✕</button>
+            <button id="card-close-btn" class="card-close"></button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -946,7 +1002,7 @@
                 <span id="card-status-badge" class="badge">Free</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Max Stay / Rules</span>
+                <span class="info-label">Max Stay</span>
                 <span id="card-maxstay" class="info-value">No Limit</span>
             </div>
             <div class="info-row">
@@ -963,7 +1019,7 @@
     <div id="nav-panel" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon">🗺️</div>
+                <div class="card-icon"></div>
                 <div>
                     <div id="nav-dest-name" class="card-title">Selected Point</div>
                     <div class="card-subtitle">Calculated Route Details</div>
@@ -1352,7 +1408,14 @@ async function handleDestinationSubmit() {
 
 /* PARKING LOGIC */
 function classifyParking(tags) {
-    // 1. Check HGV designation first
+    const hasYellowLines = 
+        tags['parking:lane:both'] === 'no_parking' || 
+        tags['parking:lane:left'] === 'no_parking' || 
+        tags['parking:lane:right'] === 'no_parking' ||
+        tags['parking:condition:both'] === 'no_parking' ||
+        tags['restriction'] === 'no_parking' ||
+        tags['waiting_restrictions'] === 'yes';
+
     if (
         tags.hgv === "designated" || tags.hgv === "yes" ||
         tags.truck === "yes" || tags["parking:hgv"] === "yes" ||
@@ -1360,100 +1423,10 @@ function classifyParking(tags) {
         tags.amenity === "truck_parking"
     ) return "hgv";
 
-    // 2. Check strict NO PARKING / NO WAITING AT ALL TIMES (Red - Restricted)
-    const hasDoubleYellowLine = 
-        tags['parking:lane:both:yellow_line'] === 'double' ||
-        tags['parking:lane:left:yellow_line'] === 'double' ||
-        tags['parking:lane:right:yellow_line'] === 'double' ||
-        tags['parking:lane:yellow_line'] === 'double';
-
-    const isStrictlyRestricted = (val) => {
-        if (!val) return false;
-        const v = val.toLowerCase();
-        return v === 'no_parking' || v === 'no_stopping' || v === 'prohibited';
-    };
-
-    const hasRestrictedLane = 
-        isStrictlyRestricted(tags['parking:lane:both']) ||
-        isStrictlyRestricted(tags['parking:lane:left']) ||
-        isStrictlyRestricted(tags['parking:lane:right']) ||
-        isStrictlyRestricted(tags['parking:condition:both']) ||
-        isStrictlyRestricted(tags['parking:condition:left']) ||
-        isStrictlyRestricted(tags['parking:condition:right']) ||
-        isStrictlyRestricted(tags['parking:both:restriction']) ||
-        isStrictlyRestricted(tags['parking:left:restriction']) ||
-        isStrictlyRestricted(tags['parking:right:restriction']);
-
-    const hasStrictGeneralRestriction = 
-        tags['restriction'] === 'no_parking' ||
-        tags['clearway'] !== undefined;
-
-    if (hasDoubleYellowLine || hasRestrictedLane || hasStrictGeneralRestriction) {
-        return "restricted";
-    }
-
-    // 3. Check for TIMED / PERMIT / RESTRICTED TIME PARKING (Yellow Marker)
-    // - Single yellow lines (restricted hours/times)
-    // - Resident / Permit holder zones
-    // - Maxstay limits / Disc parking / Time intervals
-    const hasSingleYellowLine = 
-        tags['parking:lane:both:yellow_line'] === 'single' ||
-        tags['parking:lane:left:yellow_line'] === 'single' ||
-        tags['parking:lane:right:yellow_line'] === 'single' ||
-        tags['parking:lane:yellow_line'] === 'single';
-
-    const isPermitOrTimedValue = (val) => {
-        if (!val) return false;
-        const v = val.toLowerCase();
-        return v.includes('permit') || 
-               v.includes('resident') || 
-               v.includes('timed') || 
-               v.includes('disc') || 
-               v.includes('limited') || 
-               v.includes('customer') ||
-               v === 'no_waiting';
-    };
-
-    const hasPermitOrTimedTag = 
-        hasSingleYellowLine ||
-        isPermitOrTimedValue(tags['parking:lane:both']) ||
-        isPermitOrTimedValue(tags['parking:lane:left']) ||
-        isPermitOrTimedValue(tags['parking:lane:right']) ||
-        isPermitOrTimedValue(tags['parking:condition:both']) ||
-        isPermitOrTimedValue(tags['parking:condition:left']) ||
-        isPermitOrTimedValue(tags['parking:condition:right']) ||
-        isPermitOrTimedValue(tags['parking:both:access']) ||
-        isPermitOrTimedValue(tags['parking:left:access']) ||
-        isPermitOrTimedValue(tags['parking:right:access']) ||
-        tags['restriction'] === 'no_waiting' ||
-        tags['waiting_restrictions'] !== undefined ||
-        tags['no_waiting'] !== undefined;
-
-    const hasTimedAttributes = 
-        tags.maxstay ||
-        tags['parking:both:maxstay'] || tags['parking:left:maxstay'] || tags['parking:right:maxstay'] ||
-        tags['parking:lane:both:maxstay'] || tags['parking:lane:left:maxstay'] || tags['parking:lane:right:maxstay'] ||
-        tags['parking:condition:both:maxstay'] || tags['parking:condition:left:maxstay'] || tags['parking:condition:right:maxstay'] ||
-        tags['parking:both:zone'] || tags['parking:left:zone'] || tags['parking:right:zone'] ||
-        tags['parking:condition:both:residents'] || tags['parking:condition:left:residents'] || tags['parking:condition:right:residents'] ||
-        tags['parking:condition:both:permit'] || tags['parking:condition:left:permit'] || tags['parking:condition:right:permit'] ||
-        Object.keys(tags).some(k => k.includes('conditional') || k.includes('time_interval') || k.endsWith(':maxstay') || k.endsWith(':zone'));
-
-    if (hasPermitOrTimedTag || hasTimedAttributes) {
-        return "timed";
-    }
-
-    // 4. Paid parking
-    if (
-        tags.fee === "yes" || 
-        tags['parking:lane:both'] === 'paid' || tags['parking:lane:left'] === 'paid' || tags['parking:lane:right'] === 'paid' ||
-        tags['parking:condition:both'] === 'paid' || tags['parking:condition:left'] === 'paid' || tags['parking:condition:right'] === 'paid' ||
-        tags['parking:both:fee'] === 'yes' || tags['parking:left:fee'] === 'yes' || tags['parking:right:fee'] === 'yes'
-    ) return "paid";
-
-    // 5. Major thoroughfares & private roads
+    if (hasYellowLines) return "restricted";
+    if (tags.fee === "yes" || tags['parking:lane:both'] === 'paid') return "paid";
+    if (tags.maxstay || tags['parking:condition:both'] === 'timed') return "timed";
     if (["motorway", "trunk", "primary"].includes(tags.highway) || tags.access === 'private' || tags.parking === 'private') return "restricted";
-
     return "free";
 }
 
@@ -1466,42 +1439,31 @@ function formatRoadName(tags) {
     return "Street Parking";
 }
 
-function getRuleText(tags) {
-    if (tags['parking:both:zone'] || tags['parking:left:zone'] || tags['parking:right:zone']) {
-        return `Permit Zone (${tags['parking:both:zone'] || tags['parking:left:zone'] || tags['parking:right:zone']})`;
-    }
-    if (tags['parking:condition:both:residents'] || tags['parking:condition:left:residents'] || tags['parking:condition:right:residents']) {
-        return "Permit / Residents Only";
-    }
-    if (tags.maxstay) return tags.maxstay;
-    if (tags['parking:both:maxstay'] || tags['parking:left:maxstay'] || tags['parking:right:maxstay']) {
-        return tags['parking:both:maxstay'] || tags['parking:left:maxstay'] || tags['parking:right:maxstay'];
-    }
-    return "Restricted Times / Permit";
-}
-
 /* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES WITH FILTER SUPPORT */
 function renderSidePanel() {
     const panelContent = document.getElementById("side-panel-content");
     panelContent.innerHTML = "";
 
     if (!cachedParkingFeatures || cachedParkingFeatures.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found in range.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found.</div>`;
         return;
     }
 
+    // Filter features based on current selected filter pill
     let filtered = cachedParkingFeatures;
     if (activeFilter !== "all") {
         filtered = cachedParkingFeatures.filter(f => f.properties.status === activeFilter);
     }
 
     if (filtered.length === 0) {
-        panelContent.innerHTML = `<div style="font-size:0.75rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} parking zones found nearby.</div>`;
+        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
         return;
     }
 
+    // Sort features by calculated distance (miles)
     filtered.sort((a, b) => a._distMiles - b._distMiles);
 
+    // Limit panel to top 15 nearest spots
     const topFeatures = filtered.slice(0, 15);
 
     topFeatures.forEach(feat => {
@@ -1519,8 +1481,6 @@ function renderSidePanel() {
             distLabel = `${feat._distMiles.toFixed(2)} mi`;
         }
 
-        const displayType = status === 'timed' ? 'TIMED / PERMIT' : status.toUpperCase();
-
         card.innerHTML = `
             <div class="item-top">
                 <span class="item-title">${props.name}</span>
@@ -1528,7 +1488,7 @@ function renderSidePanel() {
             </div>
             <div class="item-bottom">
                 <span class="item-badge" style="background:${color}"></span>
-                <span>${displayType} PARKING</span>
+                <span>${status.toUpperCase()}</span>
             </div>
         `;
 
@@ -1596,21 +1556,20 @@ async function updateParkingData() {
             const tags = el.tags || {};
             const status = classifyParking(tags);
             const roadName = formatRoadName(tags);
-            const ruleText = getRuleText(tags);
 
             let feat = null;
 
             if (tags.amenity === "parking" && el.geometry?.length > 2) {
                 feat = { 
                     type: "Feature", 
-                    properties: { status, maxstay: ruleText, fee: tags.fee || 'Unknown', name: tags.name || 'Off-Street Parking Lot' }, 
+                    properties: { status, maxstay: tags.maxstay || 'N/A', fee: tags.fee || 'Unknown', name: tags.name || 'Off-Street Parking Lot' }, 
                     geometry: { type: "Polygon", coordinates: [el.geometry.map(p => [p.lon, p.lat])] }
                 };
                 lots.push(feat);
             } else if (el.geometry?.length >= 2) {
                 feat = { 
                     type: "Feature", 
-                    properties: { status, maxstay: ruleText, fee: tags.fee || 'None', name: roadName }, 
+                    properties: { status, maxstay: tags.maxstay || 'N/A', fee: tags.fee || 'None', name: roadName }, 
                     geometry: { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) } 
                 };
                 roads.push(feat);
@@ -1725,8 +1684,7 @@ function showParkingDetails(props, coords) {
     selectedCardCoords = coords || (map ? map.getCenter().toArray() : null);
 
     document.getElementById("card-title").textContent = selectedCardName;
-    const statusText = props.status === 'timed' ? 'TIMED / PERMIT' : (props.status || "PARKING").toUpperCase();
-    document.getElementById("card-type").textContent = statusText + " PARKING";
+    document.getElementById("card-type").textContent = (props.status || "PARKING").toUpperCase() + " PARKING";
     
     const badge = document.getElementById("card-status-badge");
     badge.textContent = props.status;
@@ -1840,6 +1798,11 @@ document.getElementById("open-map-btn").addEventListener("click", () => {
 
 document.getElementById("home-locate-btn").addEventListener("click", locateMe);
 document.getElementById("locate-btn").addEventListener("click", locateMe);
+
+/* SIDEBAR COLLAPSE TOGGLE LISTENER */
+document.getElementById("side-panel-header").addEventListener("click", () => {
+    document.getElementById("parking-side-panel").classList.toggle("collapsed");
+});
 
 /* SIDEBAR FILTER CHIP EVENT LISTENERS */
 document.querySelectorAll(".filter-chip").forEach(chip => {
