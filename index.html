@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#050816" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Parking Ease</title>
+    <title>Parking Ease - Free Parking Finder</title>
 
     <!-- Mapbox GL JS & CSS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Turf.js for Route Snapping & Bearing Calculation -->
+    <!-- Turf.js for Route Snapping & Distance Calculations -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <!-- Google Fonts -->
@@ -23,12 +23,12 @@
     <style>
         :root {
             --bg-dark: #050816;
-            --panel-bg: rgba(10, 15, 30, 0.88);
-            --panel-border: rgba(255, 255, 255, 0.12);
+            --panel-bg: rgba(10, 15, 30, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.15);
             --primary-blue: #2563eb;
             --primary-blue-hover: #1d4ed8;
             --text-main: #ffffff;
-            --text-sub: rgba(255, 255, 255, 0.6);
+            --text-sub: rgba(255, 255, 255, 0.65);
             --color-free: #22c55e;
             --color-paid: #f97316;
             --color-timed: #facc15;
@@ -70,7 +70,7 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--panel-border);
             border-radius: 24px;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
         }
 
         /* WELCOME / HOME SCREEN */
@@ -81,10 +81,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle at 50% 30%, #0d1f4e 0%, #050816 80%);
-            padding: 24px;
-            transition: opacity 0.4s ease, visibility 0.4s ease;
+            justify-content: flex-start;
+            background: radial-gradient(circle at 50% 20%, #0d1f4e 0%, #050816 85%);
+            padding: 24px 16px;
+            overflow-y: auto;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
         }
 
         #home.hidden {
@@ -93,34 +94,42 @@
             pointer-events: none;
         }
 
+        .home-content {
+            width: min(460px, 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: auto 0;
+        }
+
         .brand-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
         }
 
         .brand-logo {
-            width: 72px;
-            height: 72px;
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
-            border-radius: 22px;
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(135deg, #22c55e, #2563eb);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 16px;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+            margin: 0 auto 12px;
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
         }
 
         .brand-logo svg {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             fill: #fff;
         }
 
         #home h1 {
-            font-size: 2.2rem;
+            font-size: 2.1rem;
             font-weight: 800;
             letter-spacing: -0.5px;
-            background: linear-gradient(to right, #ffffff, #93c5fd);
+            background: linear-gradient(to right, #ffffff, #86efac);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -128,30 +137,31 @@
         #home p {
             color: var(--text-sub);
             font-size: 0.95rem;
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
         .search-container {
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            width: min(440px, 100%);
+            gap: 12px;
+            width: 100%;
         }
 
         .search-wrap {
             display: flex;
             align-items: center;
             background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 100px;
-            padding: 6px 6px 6px 20px;
+            padding: 6px 6px 6px 18px;
             transition: all 0.2s ease;
+            position: relative;
         }
 
         .search-wrap:focus-within {
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
-            background: rgba(255, 255, 255, 0.12);
+            border-color: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+            background: rgba(255, 255, 255, 0.14);
         }
 
         .search-wrap input {
@@ -160,12 +170,12 @@
             border: none;
             outline: none;
             color: #fff;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 500;
         }
 
         .search-wrap input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.45);
         }
 
         .btn-primary {
@@ -173,9 +183,9 @@
             color: #fff;
             border: none;
             border-radius: 100px;
-            padding: 14px 24px;
+            padding: 13px 22px;
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             cursor: pointer;
             transition: all 0.2s ease;
             display: inline-flex;
@@ -191,19 +201,19 @@
 
         .home-actions {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             width: 100%;
         }
 
         .btn-secondary {
             flex: 1;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             color: #fff;
-            padding: 14px;
+            padding: 13px;
             border-radius: 100px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -213,7 +223,96 @@
         }
 
         .btn-secondary:active {
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* QUICK SUGGESTION PILLS */
+        .quick-suggestions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 2px 0;
+            width: 100%;
+            scrollbar-width: none;
+        }
+        .quick-suggestions::-webkit-scrollbar { display: none; }
+
+        .quick-pill {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-sub);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 100px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .quick-pill:hover, .quick-pill:active {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: #22c55e;
+            color: #fff;
+        }
+
+        /* HOW TO USE APP SECTION */
+        .how-to-card {
+            margin-top: 24px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 18px 20px;
+        }
+
+        .how-to-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #86efac;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .how-to-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .how-to-step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(34, 197, 94, 0.25);
+            border: 1px solid #22c55e;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .step-text {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.35;
+        }
+
+        .step-text strong {
+            color: #fff;
         }
 
         /* IN-MAP UI */
@@ -244,16 +343,16 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-radius: 16px;
+            border-radius: 18px;
             transition: all 0.3s ease;
         }
 
         .side-panel-header {
             padding: 10px 12px;
             font-size: 0.78rem;
-            font-weight: 700;
+            font-weight: 800;
             border-bottom: 1px solid var(--panel-border);
-            background: rgba(0, 0, 0, 0.25);
+            background: rgba(0, 0, 0, 0.3);
             letter-spacing: 0.02em;
             display: flex;
             align-items: center;
@@ -293,16 +392,14 @@
             padding: 6px 8px;
             overflow-x: auto;
             border-bottom: 1px solid var(--panel-border);
-            background: rgba(0, 0, 0, 0.15);
-            scrollbar-width: none; /* Firefox */
+            background: rgba(0, 0, 0, 0.2);
+            scrollbar-width: none;
         }
 
-        .filter-bar::-webkit-scrollbar {
-            display: none; /* Safari and Chrome */
-        }
+        .filter-bar::-webkit-scrollbar { display: none; }
 
         .filter-chip {
-            padding: 3px 8px;
+            padding: 4px 8px;
             border-radius: 100px;
             font-size: 0.65rem;
             font-weight: 700;
@@ -324,14 +421,14 @@
 
         .filter-chip.active {
             color: #fff;
-            background: rgba(37, 99, 235, 0.35);
-            border-color: #2563eb;
-            box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+            background: rgba(34, 197, 94, 0.35);
+            border-color: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
         }
 
         .chip-dot {
-            width: 5px;
-            height: 5px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
@@ -345,9 +442,7 @@
             gap: 6px;
         }
 
-        .side-panel-content::-webkit-scrollbar {
-            width: 3px;
-        }
+        .side-panel-content::-webkit-scrollbar { width: 3px; }
         .side-panel-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 4px;
@@ -387,8 +482,8 @@
         .item-dist {
             font-size: 0.65rem;
             font-weight: 700;
-            color: #60a5fa;
-            background: rgba(37, 99, 235, 0.2);
+            color: #86efac;
+            background: rgba(34, 197, 94, 0.2);
             padding: 2px 5px;
             border-radius: 4px;
         }
@@ -415,8 +510,14 @@
             top: calc(env(safe-area-inset-top, 0px) + 16px);
             left: 50%;
             transform: translateX(-50%);
-            width: min(440px, 92vw);
+            width: min(450px, 92vw);
             pointer-events: auto;
+            z-index: 1002;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        #top-bar.hidden-bar {
+            display: none !important;
         }
 
         .search-glass {
@@ -435,9 +536,7 @@
             font-weight: 500;
         }
 
-        #map-input::placeholder {
-            color: var(--text-sub);
-        }
+        #map-input::placeholder { color: var(--text-sub); }
 
         .icon-btn {
             width: 44px;
@@ -451,11 +550,10 @@
             justify-content: center;
             cursor: pointer;
             transition: transform 0.15s ease;
+            flex-shrink: 0;
         }
 
-        .icon-btn:active {
-            transform: scale(0.92);
-        }
+        .icon-btn:active { transform: scale(0.92); }
 
         /* SEARCH SUGGESTIONS DROPDOWN */
         .search-dropdown {
@@ -468,17 +566,15 @@
             overflow: hidden;
             display: none;
             flex-direction: column;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-            max-height: 280px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+            max-height: 320px;
             overflow-y: auto;
         }
 
-        .search-dropdown.show {
-            display: flex;
-        }
+        .search-dropdown.show { display: flex; }
 
         .dropdown-item {
-            padding: 12px 18px;
+            padding: 12px 16px;
             font-size: 0.88rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             cursor: pointer;
@@ -488,9 +584,7 @@
             gap: 2px;
         }
 
-        .dropdown-item:last-child {
-            border-bottom: none;
-        }
+        .dropdown-item:last-child { border-bottom: none; }
 
         .dropdown-item:hover, .dropdown-item:active {
             background: rgba(37, 99, 235, 0.25);
@@ -509,13 +603,14 @@
         }
 
         .dropdown-distance {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            color: #60a5fa;
-            background: rgba(37, 99, 235, 0.2);
+            color: #86efac;
+            background: rgba(34, 197, 94, 0.2);
             padding: 2px 8px;
             border-radius: 100px;
-            border: 1px solid rgba(37, 99, 235, 0.4);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            white-space: nowrap;
         }
 
         .dropdown-subtitle {
@@ -552,16 +647,14 @@
             transition: all 0.2s ease;
         }
 
-        .fab:active {
-            transform: scale(0.92);
-        }
+        .fab:active { transform: scale(0.92); }
 
         .fab.active {
             background: var(--primary-blue);
             border-color: var(--primary-blue);
         }
 
-        /* LEGEND - Positioned below the right side panel */
+        /* LEGEND */
         #legend {
             position: absolute;
             top: calc(env(safe-area-inset-top, 0px) + 80px);
@@ -590,9 +683,7 @@
             margin-bottom: 6px;
         }
 
-        .leg-mini:last-child {
-            margin-bottom: 0;
-        }
+        .leg-mini:last-child { margin-bottom: 0; }
 
         .dot {
             width: 8px;
@@ -618,7 +709,7 @@
             display: none;
             pointer-events: none;
             backdrop-filter: blur(12px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
             z-index: 100;
         }
 
@@ -637,9 +728,7 @@
             animation: spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* POPUPS & CARDS */
         .bottom-card {
@@ -654,9 +743,7 @@
             animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .bottom-card.show {
-            display: block;
-        }
+        .bottom-card.show { display: block; }
 
         @keyframes slideUp {
             from { opacity: 0; transform: translate(-50%, 30px); }
@@ -681,8 +768,8 @@
             width: 40px;
             height: 40px;
             border-radius: 14px;
-            background: rgba(37, 99, 235, 0.15);
-            border: 1px solid rgba(37, 99, 235, 0.3);
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -705,7 +792,7 @@
             height: 30px;
             border-radius: 50%;
             border: none;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.1);
             color: #fff;
             cursor: pointer;
             display: flex;
@@ -727,13 +814,8 @@
             font-size: 0.88rem;
         }
 
-        .info-label {
-            color: var(--text-sub);
-        }
-
-        .info-value {
-            font-weight: 600;
-        }
+        .info-label { color: var(--text-sub); }
+        .info-value { font-weight: 600; }
 
         .badge {
             padding: 4px 10px;
@@ -756,9 +838,7 @@
             z-index: 1001;
         }
 
-        #dest-bar.show {
-            display: block;
-        }
+        #dest-bar.show { display: block; }
 
         #route-status {
             position: absolute;
@@ -771,15 +851,13 @@
             display: none;
             align-items: center;
             justify-content: space-between;
-            z-index: 1001;
-            border-color: rgba(37, 99, 235, 0.4);
+            z-index: 2000;
+            border-color: rgba(37, 99, 235, 0.5);
         }
 
-        #route-status.show {
-            display: flex;
-        }
+        #route-status.show { display: flex; }
 
-        /* STANDARD LOCATION DOT MARKER */
+        /* MARKERS */
         .player-marker {
             width: 32px;
             height: 32px;
@@ -790,7 +868,7 @@
             position: absolute;
             inset: -8px;
             border-radius: 50%;
-            background: rgba(37, 99, 235, 0.3);
+            background: rgba(37, 99, 235, 0.35);
             animation: pulse 2s ease-in-out infinite;
         }
 
@@ -810,7 +888,6 @@
             z-index: 2;
         }
 
-        /* SAT NAV ARROW MARKER */
         .satnav-arrow-wrapper {
             width: 44px;
             height: 44px;
@@ -852,16 +929,14 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
         }
 
-        /* RESPONSIVE MOBILE ADJUSTMENTS FOR SIDE PANEL */
+        /* RESPONSIVE MOBILE ADJUSTMENTS */
         @media (max-width: 600px) {
             .parking-side-panel {
                 width: 190px;
                 right: 8px;
                 top: calc(env(safe-area-inset-top, 0px) + 72px);
             }
-            .item-title {
-                max-width: 90px;
-            }
+            .item-title { max-width: 90px; }
             #legend {
                 left: 8px;
                 top: calc(env(safe-area-inset-top, 0px) + 72px);
@@ -873,28 +948,60 @@
 
 <!-- HOME SCREEN -->
 <div id="home">
-    <div class="brand-header">
-        <div class="brand-logo">
-            <svg viewBox="0 0 24 24"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
+    <div class="home-content">
+        <div class="brand-header">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
+            </div>
+            <h1>Parking Ease</h1>
+            <p>Find free street parking & parking zones near you</p>
         </div>
-        <h1>Parking Ease</h1>
-        <p>Find real-time parking zones near you</p>
-    </div>
 
-    <div class="search-container">
-        <div class="search-wrap">
-            <input id="home-input" type="text" placeholder="City, store, or postcode..." autocomplete="off" />
-            <button id="home-btn" class="btn-primary">Search</button>
+        <div class="search-container">
+            <div class="search-wrap">
+                <input id="home-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley), postcodes..." autocomplete="off" />
+                <button id="home-btn" class="btn-primary">Search</button>
+            </div>
+
+            <!-- Quick Search Suggestions -->
+            <div class="quick-suggestions">
+                <span class="quick-pill" onclick="quickSearch('Tesco')">🛒 Tesco</span>
+                <span class="quick-pill" onclick="quickSearch('Wembley Stadium')">🏟️ Wembley Stadium</span>
+                <span class="quick-pill" onclick="quickSearch('Sainsbury\'s')">🛍️ Sainsbury's</span>
+                <span class="quick-pill" onclick="quickSearch('Train Station')">🚆 Station</span>
+            </div>
+
+            <div class="home-actions">
+                <button id="open-map-btn" class="btn-secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+                    Explore Map
+                </button>
+                <button id="home-locate-btn" class="btn-secondary" style="background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.4);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                    Locate Me
+                </button>
+            </div>
         </div>
-        <div class="home-actions">
-            <button id="open-map-btn" class="btn-secondary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
-                Explore Map
-            </button>
-            <button id="home-locate-btn" class="btn-secondary" style="background: rgba(37,99,235,0.2); border-color: rgba(37,99,235,0.4);">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
-                Locate Me
-            </button>
+
+        <!-- HOW TO USE THE APP GUIDE -->
+        <div class="how-to-card">
+            <div class="how-to-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Mainly Built to Find Free Parking
+            </div>
+            
+            <div class="how-to-step">
+                <div class="step-num">1</div>
+                <div class="step-text"><strong>Look for Green Lines:</strong> <span style="color:#22c55e;font-weight:700">GREEN</span> highlights <strong>100% Free Parking</strong> streets and free parking lots!</div>
+            </div>
+            <div class="how-to-step">
+                <div class="step-num">2</div>
+                <div class="step-text"><strong>Identify Restrictions:</strong> Shows <span style="color:#f97316;font-weight:700">Orange</span> (Paid), <span style="color:#facc15;font-weight:700">Yellow</span> (Timed Limit), and <span style="color:#ef4444;font-weight:700">Red</span> (No Parking / Restrictions).</div>
+            </div>
+            <div class="how-to-step">
+                <div class="step-num">3</div>
+                <div class="step-text"><strong>Search Anywhere:</strong> Type any specific venue or building like <em>Tesco</em> or <em>Wembley Stadium</em>, road name, or postcode to navigate directly.</div>
+            </div>
         </div>
     </div>
 </div>
@@ -934,20 +1041,21 @@
 
     <div id="top-bar">
         <div class="glass-panel search-glass">
-            <input id="map-input" type="text" placeholder="Search new location..." autocomplete="off" />
-            <button id="map-btn" class="icon-btn">
+            <input id="map-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley)..." autocomplete="off" />
+            <button id="map-btn" class="icon-btn" title="Search">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
         </div>
+        <div id="map-dropdown" class="search-dropdown"></div>
     </div>
 
     <div id="dest-bar">
         <div class="glass-panel search-glass" style="border-color: rgba(37, 99, 235, 0.5);">
-            <input id="dest-input" type="text" placeholder="Where to? (e.g., Tesco, Sainsbury's)" autocomplete="off" />
+            <input id="dest-input" type="text" placeholder="Where to? (e.g. Tesco, Wembley Stadium)" autocomplete="off" />
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close"></button>
+            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;">✕</button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -957,7 +1065,7 @@
             <div id="rs-main-text" style="font-weight: 700; font-size: 0.95rem;">Navigating...</div>
             <div id="rs-sub-text" style="font-size: 0.75rem; color: var(--text-sub);">Following live sat nav route</div>
         </div>
-        <button id="rs-end-btn" class="btn-primary" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 16px; font-size: 0.8rem; cursor: pointer;">End</button>
+        <button id="rs-end-btn" class="btn-primary" style="background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px 18px; font-size: 0.85rem; font-weight: 800; cursor: pointer; z-index: 2005;">End Route</button>
     </div>
 
     <div id="legend" class="glass-panel">
@@ -970,7 +1078,7 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>Fetching Parking Data...</span>
+        <span>Loading Parking & Roads...</span>
     </div>
 
     <div class="fab-group">
@@ -988,13 +1096,15 @@
     <div id="parking-card" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon"></div>
+                <div class="card-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#86efac"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
+                </div>
                 <div>
                     <div id="card-title" class="card-title">Unknown Road</div>
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close"></button>
+            <button id="card-close-btn" class="card-close">✕</button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -1019,7 +1129,9 @@
     <div id="nav-panel" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon"></div>
+                <div class="card-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                </div>
                 <div>
                     <div id="nav-dest-name" class="card-title">Selected Point</div>
                     <div class="card-subtitle">Calculated Route Details</div>
@@ -1070,16 +1182,19 @@ let navActive = false;
 let navModeOn = false;
 let activeRouteGeoJSON = null;
 let searchDebounceTimeout = null;
+let fetchDebounceTimeout = null;
 let selectedCardCoords = null;
 let selectedCardName = "";
 
-// Side panel cache & filter state
+// Caching variables
+let lastFetchedCenter = null;
 let cachedParkingFeatures = [];
 let activeFilter = "all";
 
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
-    const R = 3958.8; // Radius of Earth in miles
+    if (!coord1 || !coord2) return 9999;
+    const R = 3958.8;
     const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
     const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -1089,7 +1204,7 @@ function calculateDistanceMiles(coord1, coord2) {
     return R * c;
 }
 
-/* PARKING LAYERS VISIBILITY */
+/* VISIBILITY HELPER */
 function setParkingLayersVisibility(visible) {
     if (!map) return;
     const visibility = visible ? 'visible' : 'none';
@@ -1106,7 +1221,7 @@ function setParkingLayersVisibility(visible) {
     }
 }
 
-/* DYNAMIC PLAYER MARKER BUILDERS */
+/* DYNAMIC PLAYER MARKER */
 function buildDotMarkerEl() {
     const wrap = document.createElement('div');
     wrap.className = 'player-marker';
@@ -1153,7 +1268,7 @@ function placePlayerMarker(coords, heading = 0) {
     }
 }
 
-/* ROUTE SNAPPING & BEARING MATH */
+/* ROUTE SNAPPING */
 function processSnapToRoute(rawCoords, deviceHeading) {
     if (!navActive || !activeRouteGeoJSON || !window.turf) {
         return { snappedCoords: rawCoords, heading: deviceHeading };
@@ -1177,7 +1292,6 @@ function processSnapToRoute(rawCoords, deviceHeading) {
             heading: calculatedHeading
         };
     } catch (err) {
-        console.warn("Snap calculation failed, falling back to raw location", err);
         return { snappedCoords: rawCoords, heading: deviceHeading };
     }
 }
@@ -1250,57 +1364,56 @@ function clearRoute() {
     if (map.getSource('route')) map.removeSource('route');
 }
 
-/* STRICT LOCAL POI / STORE SEARCH & SORTING */
+/* ENHANCED SEARCH FIX FOR WEMBLEY & POIs */
 async function fetchPlaces(query) {
     const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
     const prox = `${origin[0]},${origin[1]}`;
 
     try {
-        const placeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&types=place,locality,district,postcode&proximity=${prox}&country=gb&limit=5`;
-        const placeRes = await fetch(placeUrl);
-        const placeData = await placeRes.json();
-        let features = placeData.features || [];
-
-        if (features.length === 0) {
-            const fallbackUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&types=poi,address&proximity=${prox}&country=gb&limit=5`;
-            const fallbackRes = await fetch(fallbackUrl);
-            const fallbackData = await fallbackRes.json();
-            features = fallbackData.features || [];
-        }
+        // Query Mapbox Geocoding API with explicit POI feature types & proximity
+        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${prox}&country=gb&types=poi,address,neighborhood,locality&autocomplete=true&limit=10`;
+        const res = await fetch(geocodeUrl);
+        const data = await res.json();
+        let features = data.features || [];
 
         features.forEach(f => {
-            if (f.center) {
-                f._distMiles = calculateDistanceMiles(origin, f.center);
-            } else {
-                f._distMiles = 99999;
-            }
+            // Force strict coordinate extraction for POIs like Wembley Stadium
+            const center = f.center || (f.geometry ? f.geometry.coordinates : null);
+            f._centerCoords = center;
+            f._distMiles = center ? calculateDistanceMiles(origin, center) : 99999;
         });
 
-        features.sort((a, b) => a._distMiles - b._distMiles);
+        // If the query explicitly includes a location name like "Wembley", 
+        // prioritize POI/locality matches over pure user-distance sorting
+        const isNamedSearch = query.length > 3 && !query.toLowerCase().startsWith("tesco");
+        if (!isNamedSearch) {
+            features.sort((a, b) => a._distMiles - b._distMiles);
+        }
 
         return features;
     } catch (e) {
-        console.error("Geocoding error", e);
+        console.error("Geocoding search failed", e);
         return [];
     }
 }
 
-function hideDestDropdown() {
-    const dropdown = document.getElementById('dest-dropdown');
-    dropdown.classList.remove('show');
-    dropdown.innerHTML = '';
+function hideDropdowns() {
+    ['dest-dropdown', 'map-dropdown'].forEach(id => {
+        const d = document.getElementById(id);
+        if (d) { d.classList.remove('show'); d.innerHTML = ''; }
+    });
 }
 
-async function renderDestDropdown(query) {
-    const dropdown = document.getElementById('dest-dropdown');
+async function renderDropdown(dropdownId, inputId, query) {
+    const dropdown = document.getElementById(dropdownId);
     if (!query.trim()) {
-        hideDestDropdown();
+        dropdown.classList.remove('show');
         return;
     }
 
     const features = await fetchPlaces(query);
     if (!features.length) {
-        hideDestDropdown();
+        dropdown.classList.remove('show');
         return;
     }
 
@@ -1320,14 +1433,13 @@ async function renderDestDropdown(query) {
         distTag.className = 'dropdown-distance';
         
         if (feat._distMiles < 0.1) {
-            const yards = Math.round(feat._distMiles * 1760);
-            distTag.textContent = `${yards} yd`;
-        } else {
+            distTag.textContent = `${Math.round(feat._distMiles * 1760)} yd`;
+        } else if (feat._distMiles < 999) {
             distTag.textContent = `${feat._distMiles.toFixed(1)} mi`;
         }
 
         titleRow.appendChild(title);
-        titleRow.appendChild(distTag);
+        if (distTag.textContent) titleRow.appendChild(distTag);
 
         const sub = document.createElement('span');
         sub.className = 'dropdown-subtitle';
@@ -1337,8 +1449,15 @@ async function renderDestDropdown(query) {
         item.appendChild(sub);
 
         item.addEventListener('click', () => {
-            selectDestination(feat);
-            hideDestDropdown();
+            document.getElementById(inputId).value = feat.text || feat.place_name;
+            hideDropdowns();
+            
+            const targetCoords = feat._centerCoords || feat.center;
+            if (dropdownId === 'dest-dropdown') {
+                startRoutingToCoords(targetCoords, feat.text || feat.place_name);
+            } else {
+                jumpToLocation(targetCoords);
+            }
         });
 
         dropdown.appendChild(item);
@@ -1347,11 +1466,23 @@ async function renderDestDropdown(query) {
     dropdown.classList.add('show');
 }
 
-async function selectDestination(feature) {
-    document.getElementById('dest-input').value = feature.text || feature.place_name;
-    const coords = feature.center;
+function jumpToLocation(coords) {
+    if (!coords || coords.length < 2) return;
 
-    startRoutingToCoords(coords, feature.place_name);
+    document.getElementById("home").classList.add("hidden");
+    document.getElementById("ui").classList.add("visible");
+    
+    if (!map) {
+        initMap(coords);
+    } else {
+        map.flyTo({ 
+            center: coords, 
+            zoom: 16.5, 
+            pitch: 0,
+            essential: true 
+        });
+        setTimeout(debouncedUpdateParkingData, 400);
+    }
 }
 
 async function startRoutingToCoords(coords, name) {
@@ -1391,22 +1522,7 @@ async function startRoutingToCoords(coords, name) {
     }
 }
 
-async function handleDestinationSubmit() {
-    const val = document.getElementById('dest-input').value.trim();
-    if (!val) return;
-
-    hideDestDropdown();
-    document.getElementById('dest-input').blur();
-
-    const features = await fetchPlaces(val);
-    if (features.length > 0) {
-        selectDestination(features[0]);
-    } else {
-        alert("Location or store not found.");
-    }
-}
-
-/* PARKING LOGIC */
+/* PARKING CLASSIFICATION */
 function classifyParking(tags) {
     const hasYellowLines = 
         tags['parking:lane:both'] === 'no_parking' || 
@@ -1439,7 +1555,7 @@ function formatRoadName(tags) {
     return "Street Parking";
 }
 
-/* RENDER SIDE PANEL LIST OF CLOSEST PARKING ZONES WITH FILTER SUPPORT */
+/* SIDE PANEL RENDERER */
 function renderSidePanel() {
     const panelContent = document.getElementById("side-panel-content");
     panelContent.innerHTML = "";
@@ -1449,7 +1565,6 @@ function renderSidePanel() {
         return;
     }
 
-    // Filter features based on current selected filter pill
     let filtered = cachedParkingFeatures;
     if (activeFilter !== "all") {
         filtered = cachedParkingFeatures.filter(f => f.properties.status === activeFilter);
@@ -1460,10 +1575,7 @@ function renderSidePanel() {
         return;
     }
 
-    // Sort features by calculated distance (miles)
     filtered.sort((a, b) => a._distMiles - b._distMiles);
-
-    // Limit panel to top 15 nearest spots
     const topFeatures = filtered.slice(0, 15);
 
     topFeatures.forEach(feat => {
@@ -1474,12 +1586,9 @@ function renderSidePanel() {
         const card = document.createElement("div");
         card.className = "parking-item-card";
 
-        let distLabel = "";
-        if (feat._distMiles < 0.1) {
-            distLabel = `${Math.round(feat._distMiles * 1760)} yd`;
-        } else {
-            distLabel = `${feat._distMiles.toFixed(2)} mi`;
-        }
+        let distLabel = feat._distMiles < 0.1 ? 
+            `${Math.round(feat._distMiles * 1760)} yd` : 
+            `${feat._distMiles.toFixed(2)} mi`;
 
         card.innerHTML = `
             <div class="item-top">
@@ -1495,13 +1604,9 @@ function renderSidePanel() {
         card.addEventListener("click", () => {
             let flyCoords = null;
             if (feat.geometry && feat.geometry.coordinates) {
-                if (feat.geometry.type === "Point") {
-                    flyCoords = feat.geometry.coordinates;
-                } else if (feat.geometry.type === "LineString") {
-                    flyCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
-                } else if (feat.geometry.type === "Polygon") {
-                    flyCoords = feat.geometry.coordinates[0][0];
-                }
+                if (feat.geometry.type === "Point") flyCoords = feat.geometry.coordinates;
+                else if (feat.geometry.type === "LineString") flyCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+                else if (feat.geometry.type === "Polygon") flyCoords = feat.geometry.coordinates[0][0];
             }
 
             showParkingDetails(props, flyCoords);
@@ -1515,18 +1620,30 @@ function renderSidePanel() {
     });
 }
 
-/* OVERPASS DATA FETCHING */
+/* OPTIMIZED OVERPASS DATA FETCHING */
+function debouncedUpdateParkingData() {
+    clearTimeout(fetchDebounceTimeout);
+    fetchDebounceTimeout = setTimeout(updateParkingData, 200);
+}
+
 async function updateParkingData() {
     if (!map || navActive) return;
     const zoom = map.getZoom();
     if (zoom < 11) return; 
 
     const center = map.getCenter();
-    const originPoint = playerCoords || [center.lng, center.lat];
+    const currentCenter = [center.lng, center.lat];
+
+    if (lastFetchedCenter && calculateDistanceMiles(lastFetchedCenter, currentCenter) < 0.25) {
+        return;
+    }
+
+    lastFetchedCenter = currentCenter;
+    const originPoint = playerCoords || currentCenter;
     document.getElementById("loader").classList.add("show");
 
-    const radius = zoom > 14 ? 1200 : 2500;
-    const query = `[out:json][timeout:15];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
+    const radius = zoom > 14 ? 1000 : 2000;
+    const query = `[out:json][timeout:10];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
 
     const endpoints = [
         "https://overpass-api.de/api/interpreter",
@@ -1537,13 +1654,20 @@ async function updateParkingData() {
     let data = null;
     for (let endpoint of endpoints) {
         try {
-            const res = await fetch(endpoint, { method: "POST", body: "data=" + encodeURIComponent(query) });
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(endpoint, { 
+                method: "POST", 
+                body: "data=" + encodeURIComponent(query),
+                signal: controller.signal
+            });
+            clearTimeout(id);
             if (res.ok) {
                 data = await res.json();
                 break;
             }
         } catch (err) {
-            console.warn(`Endpoint ${endpoint} failed, trying next...`);
+            console.warn(`Endpoint ${endpoint} timed out or failed.`);
         }
     }
 
@@ -1609,7 +1733,7 @@ async function updateParkingData() {
 function initMap(center) {
     if (map) { 
         map.flyTo({ center: center, zoom: 16, essential: true });
-        setTimeout(updateParkingData, 300);
+        debouncedUpdateParkingData();
         return; 
     }
     
@@ -1662,7 +1786,7 @@ function initMap(center) {
             }, labelLayerId);
         });
 
-        map.on("moveend", updateParkingData);
+        map.on("moveend", debouncedUpdateParkingData);
         
         map.on("click", (e) => {
             if (navActive) return;
@@ -1674,7 +1798,7 @@ function initMap(center) {
             }
         });
 
-        updateParkingData();
+        debouncedUpdateParkingData();
     });
 }
 
@@ -1716,10 +1840,10 @@ function locateMe() {
             map.flyTo({ center: coords, zoom: 16, essential: true });
             placePlayerMarker(coords, heading);
             startWatching();
-            setTimeout(updateParkingData, 500);
+            debouncedUpdateParkingData();
         }
     }, () => {
-        alert("Location permissions are required to track location.");
+        alert("Please enable Location permissions on your device.");
     });
 }
 
@@ -1752,27 +1876,28 @@ async function handleSearch(inputId) {
     const val = el.value.trim();
     if (!val) return;
     el.blur();
+    hideDropdowns();
 
     const features = await fetchPlaces(val);
     if (features.length) {
-        const coords = features[0].center;
-        document.getElementById("home").classList.add("hidden");
-        document.getElementById("ui").classList.add("visible");
-        
-        if (!map) {
-            initMap(coords);
-        } else {
-            map.flyTo({ center: coords, zoom: 16, essential: true });
-            setTimeout(updateParkingData, 500);
-        }
+        const targetCoords = features[0]._centerCoords || features[0].center;
+        jumpToLocation(targetCoords);
+    } else {
+        alert("Location not found. Try entering a store name, road name, town, or postcode.");
     }
+}
+
+function quickSearch(query) {
+    document.getElementById("home-input").value = query;
+    handleSearch("home-input");
 }
 
 function stopNavigation() {
     navActive = false;
-    
     updateMarkerElement();
+    
     document.getElementById("route-status").classList.remove("show");
+    document.getElementById("top-bar").classList.remove("hidden-bar");
     
     if (map) {
         map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
@@ -1781,10 +1906,10 @@ function stopNavigation() {
     setParkingLayersVisibility(true);
     clearRoute();
     removeDestMarker();
-    updateParkingData();
+    debouncedUpdateParkingData();
 }
 
-/* EVENTS */
+/* EVENT LISTENERS */
 document.getElementById("home-btn").addEventListener("click", () => handleSearch("home-input"));
 document.getElementById("map-btn").addEventListener("click", () => handleSearch("map-input"));
 document.getElementById("home-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("home-input"); });
@@ -1799,12 +1924,10 @@ document.getElementById("open-map-btn").addEventListener("click", () => {
 document.getElementById("home-locate-btn").addEventListener("click", locateMe);
 document.getElementById("locate-btn").addEventListener("click", locateMe);
 
-/* SIDEBAR COLLAPSE TOGGLE LISTENER */
 document.getElementById("side-panel-header").addEventListener("click", () => {
     document.getElementById("parking-side-panel").classList.toggle("collapsed");
 });
 
-/* SIDEBAR FILTER CHIP EVENT LISTENERS */
 document.querySelectorAll(".filter-chip").forEach(chip => {
     chip.addEventListener("click", (e) => {
         document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
@@ -1826,41 +1949,57 @@ document.getElementById("nav-mode-btn").addEventListener("click", () => {
     navModeOn = !navModeOn;
     document.getElementById("dest-bar").classList.toggle("show", navModeOn);
     document.getElementById("nav-mode-btn").classList.toggle("active", navModeOn);
-    if (!navModeOn) hideDestDropdown();
+    
+    if (navModeOn) {
+        document.getElementById("top-bar").classList.add("hidden-bar");
+    } else {
+        document.getElementById("top-bar").classList.remove("hidden-bar");
+        hideDropdowns();
+    }
 });
 
-/* CARD NAVIGATE BUTTON EVENT */
 document.getElementById("card-nav-btn").addEventListener("click", () => {
     if (selectedCardCoords) {
         startRoutingToCoords(selectedCardCoords, selectedCardName);
     }
 });
 
-/* LIVE AUTOCOMPLETE / DROPDOWN INPUT LISTENER */
+document.getElementById("map-input").addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimeout);
+    const val = e.target.value;
+    searchDebounceTimeout = setTimeout(() => {
+        renderDropdown('map-dropdown', 'map-input', val);
+    }, 200);
+});
+
 document.getElementById("dest-input").addEventListener("input", (e) => {
     clearTimeout(searchDebounceTimeout);
     const val = e.target.value;
     searchDebounceTimeout = setTimeout(() => {
-        renderDestDropdown(val);
-    }, 250);
+        renderDropdown('dest-dropdown', 'dest-input', val);
+    }, 200);
 });
 
-document.getElementById("dest-search-btn").addEventListener("click", handleDestinationSubmit);
-document.getElementById("dest-input").addEventListener("keypress", (e) => { 
-    if(e.key === "Enter") handleDestinationSubmit(); 
-});
+document.getElementById("dest-search-btn").addEventListener("click", () => handleSearch("dest-input"));
+document.getElementById("dest-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("dest-input"); });
 
 document.getElementById("dest-cancel-btn").addEventListener("click", () => {
     document.getElementById("dest-bar").classList.remove("show");
+    document.getElementById("top-bar").classList.remove("hidden-bar");
     document.getElementById("nav-mode-btn").classList.remove("active");
-    hideDestDropdown();
+    navModeOn = false;
+    hideDropdowns();
 });
 
 document.getElementById("nav-go-btn").addEventListener("click", () => {
     navActive = true;
-    
     updateMarkerElement();
     setParkingLayersVisibility(false);
+
+    document.getElementById("top-bar").classList.add("hidden-bar");
+    document.getElementById("dest-bar").classList.remove("show");
+    document.getElementById("nav-mode-btn").classList.remove("active");
+    hideDropdowns();
 
     document.getElementById("nav-panel").classList.remove("show");
     document.getElementById("route-status").classList.add("show");
@@ -1880,6 +2019,7 @@ document.getElementById("nav-go-btn").addEventListener("click", () => {
 
 document.getElementById("nav-cancel-btn").addEventListener("click", () => {
     document.getElementById("nav-panel").classList.remove("show");
+    document.getElementById("top-bar").classList.remove("hidden-bar");
     clearRoute();
     removeDestMarker();
 });
