@@ -34,6 +34,7 @@
             --color-timed: #facc15;
             --color-restricted: #ef4444;
             --color-hgv: #8b5cf6;
+            --color-roadworks: #f97316;
         }
 
         *, *::before, *::after {
@@ -451,7 +452,7 @@
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
+            border-radius: 100px;
             padding: 8px 10px;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -929,6 +930,33 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
         }
 
+        /* APPLE MAPS APPLE-STYLE ROADWORK BADGE MARKER */
+        .roadwork-marker-badge {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.6);
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .roadwork-marker-badge:hover {
+            transform: scale(1.2);
+        }
+
+        .roadwork-marker-badge svg {
+            width: 15px;
+            height: 15px;
+            stroke: #ffffff;
+            stroke-width: 2.2;
+            fill: none;
+        }
+
         /* RESPONSIVE MOBILE ADJUSTMENTS */
         @media (max-width: 600px) {
             .parking-side-panel {
@@ -965,10 +993,10 @@
 
             <!-- Quick Search Suggestions -->
             <div class="quick-suggestions">
-                <span class="quick-pill" onclick="quickSearch('Tesco')">🛒 Tesco</span>
-                <span class="quick-pill" onclick="quickSearch('Wembley Stadium')">🏟️ Wembley Stadium</span>
-                <span class="quick-pill" onclick="quickSearch('Sainsbury\'s')">🛍️ Sainsbury's</span>
-                <span class="quick-pill" onclick="quickSearch('Train Station')">🚆 Station</span>
+                <span class="quick-pill" onclick="quickSearch('Tesco')"> Tesco</span>
+                <span class="quick-pill" onclick="quickSearch('Wembley Stadium')"> Wembley Stadium</span>
+                <span class="quick-pill" onclick="quickSearch('Sainsbury\'s')"> Sainsbury's</span>
+                <span class="quick-pill" onclick="quickSearch('Train Station')"> Station</span>
             </div>
 
             <div class="home-actions">
@@ -1000,7 +1028,7 @@
             </div>
             <div class="how-to-step">
                 <div class="step-num">3</div>
-                <div class="step-text"><strong>Search Anywhere:</strong> Type any specific venue or building like <em>Tesco</em> or <em>Wembley Stadium</em>, road name, or postcode to navigate directly.</div>
+                <div class="step-text"><strong>Live Road Works:</strong> Real-time road work zones styled like Apple Maps show dashed hazards & warning icons.</div>
             </div>
         </div>
     </div>
@@ -1028,7 +1056,7 @@
                 <button class="filter-chip" data-filter="paid"><span class="chip-dot" style="background:var(--color-paid)"></span>Paid</button>
                 <button class="filter-chip" data-filter="timed"><span class="chip-dot" style="background:var(--color-timed)"></span>Timed</button>
                 <button class="filter-chip" data-filter="restricted"><span class="chip-dot" style="background:var(--color-restricted)"></span>No Parking</button>
-                <button class="filter-chip" data-filter="hgv"><span class="chip-dot" style="background:var(--color-hgv)"></span>HGV</button>
+                <button class="filter-chip" data-filter="roadwork"><span class="chip-dot" style="background:var(--color-roadworks)"></span>Works</button>
             </div>
 
             <div id="side-panel-content" class="side-panel-content">
@@ -1055,7 +1083,7 @@
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;">✕</button>
+            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;"></button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -1073,12 +1101,12 @@
         <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed Parking</div>
         <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
-        <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-roadworks)"></div>Road Work</div>
     </div>
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>Loading Parking & Roads...</span>
+        <span>Loading Parking & Road Work...</span>
     </div>
 
     <div class="fab-group">
@@ -1096,7 +1124,7 @@
     <div id="parking-card" class="glass-panel bottom-card">
         <div class="card-header">
             <div class="card-title-group">
-                <div class="card-icon">
+                <div class="card-icon" id="card-icon-wrap">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="#86efac"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
                 </div>
                 <div>
@@ -1104,7 +1132,7 @@
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close">✕</button>
+            <button id="card-close-btn" class="card-close"></button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -1112,7 +1140,7 @@
                 <span id="card-status-badge" class="badge">Free</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Max Stay</span>
+                <span class="info-label">Max Stay / Info</span>
                 <span id="card-maxstay" class="info-value">No Limit</span>
             </div>
             <div class="info-row">
@@ -1168,7 +1196,8 @@ const COLORS = {
     paid: "#f97316",
     timed: "#facc15",
     restricted: "#ef4444",
-    hgv: "#8b5cf6"
+    hgv: "#8b5cf6",
+    roadwork: "#f97316"
 };
 
 let map = null;
@@ -1186,10 +1215,12 @@ let fetchDebounceTimeout = null;
 let selectedCardCoords = null;
 let selectedCardName = "";
 
-// Caching variables
+// Caching & Markers
 let lastFetchedCenter = null;
 let cachedParkingFeatures = [];
+let roadworkMarkers = [];
 let activeFilter = "all";
+let dashAnimationStep = 0;
 
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
@@ -1216,9 +1247,19 @@ function setParkingLayersVisibility(visible) {
         }
     });
 
+    if (map.getLayer('layer-roadwork-dash')) {
+        map.setLayoutProperty('layer-roadwork-dash', 'visibility', visibility);
+    }
+
     if (map.getLayer('lots-fill')) {
         map.setLayoutProperty('lots-fill', 'visibility', visibility);
     }
+
+    // Toggle Apple Maps style roadwork icons
+    roadworkMarkers.forEach(m => {
+        const el = m.getElement();
+        if (el) el.style.display = visible ? 'flex' : 'none';
+    });
 }
 
 /* DYNAMIC PLAYER MARKER */
@@ -1364,27 +1405,23 @@ function clearRoute() {
     if (map.getSource('route')) map.removeSource('route');
 }
 
-/* ENHANCED SEARCH FIX FOR WEMBLEY & POIs */
+/* SEARCH & POIs */
 async function fetchPlaces(query) {
     const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
     const prox = `${origin[0]},${origin[1]}`;
 
     try {
-        // Query Mapbox Geocoding API with explicit POI feature types & proximity
         const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${prox}&country=gb&types=poi,address,neighborhood,locality&autocomplete=true&limit=10`;
         const res = await fetch(geocodeUrl);
         const data = await res.json();
         let features = data.features || [];
 
         features.forEach(f => {
-            // Force strict coordinate extraction for POIs like Wembley Stadium
             const center = f.center || (f.geometry ? f.geometry.coordinates : null);
             f._centerCoords = center;
             f._distMiles = center ? calculateDistanceMiles(origin, center) : 99999;
         });
 
-        // If the query explicitly includes a location name like "Wembley", 
-        // prioritize POI/locality matches over pure user-distance sorting
         const isNamedSearch = query.length > 3 && !query.toLowerCase().startsWith("tesco");
         if (!isNamedSearch) {
             features.sort((a, b) => a._distMiles - b._distMiles);
@@ -1522,8 +1559,17 @@ async function startRoutingToCoords(coords, name) {
     }
 }
 
-/* PARKING CLASSIFICATION */
+/* PARKING & ROAD WORK CLASSIFICATION */
 function classifyParking(tags) {
+    // Detect road works directly from OpenStreetMap active construction tags
+    if (
+        tags.highway === 'construction' || 
+        tags.construction || 
+        tags.barrier === 'road_works' ||
+        tags.roadwork === 'yes' ||
+        tags['work:type']
+    ) return "roadwork";
+
     const hasYellowLines = 
         tags['parking:lane:both'] === 'no_parking' || 
         tags['parking:lane:left'] === 'no_parking' || 
@@ -1620,7 +1666,47 @@ function renderSidePanel() {
     });
 }
 
-/* OPTIMIZED OVERPASS DATA FETCHING */
+/* APPLE MAPS STYLE ROADWORK BADGES */
+function clearRoadworkMarkers() {
+    roadworkMarkers.forEach(m => m.remove());
+    roadworkMarkers = [];
+}
+
+function renderRoadworkBadges(roadworkFeatures) {
+    clearRoadworkMarkers();
+    if (!map || navActive) return;
+
+    roadworkFeatures.forEach(feat => {
+        let centerCoords = null;
+        if (feat.geometry.type === "LineString" && feat.geometry.coordinates.length) {
+            centerCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+        }
+
+        if (!centerCoords) return;
+
+        const el = document.createElement('div');
+        el.className = 'roadwork-marker-badge';
+        el.title = feat.properties.name + " - Live Roadwork";
+        el.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+        `;
+
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showParkingDetails(feat.properties, centerCoords);
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+            .setLngLat(centerCoords)
+            .addTo(map);
+
+        roadworkMarkers.push(marker);
+    });
+}
+
+/* OPTIMIZED OVERPASS DATA FETCHING WITH ROADWORK SUPPORT */
 function debouncedUpdateParkingData() {
     clearTimeout(fetchDebounceTimeout);
     fetchDebounceTimeout = setTimeout(updateParkingData, 200);
@@ -1642,8 +1728,9 @@ async function updateParkingData() {
     const originPoint = playerCoords || currentCenter;
     document.getElementById("loader").classList.add("show");
 
-    const radius = zoom > 14 ? 1000 : 2000;
-    const query = `[out:json][timeout:10];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
+    const radius = zoom > 14 ? 1200 : 2200;
+    // Enhanced Overpass Query to include active construction & roadwork tags
+    const query = `[out:json][timeout:10];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[highway=construction];way(around:${radius},${center.lat},${center.lng})[barrier=road_works];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
 
     const endpoints = [
         "https://overpass-api.de/api/interpreter",
@@ -1672,14 +1759,14 @@ async function updateParkingData() {
     }
 
     if (data && data.elements) {
-        const roads = [], lots = [];
+        const roads = [], lots = [], roadworks = [];
         cachedParkingFeatures = [];
         const pt = turf.point(originPoint);
 
         data.elements.forEach(el => {
             const tags = el.tags || {};
             const status = classifyParking(tags);
-            const roadName = formatRoadName(tags);
+            const roadName = status === 'roadwork' ? (tags.name || 'Road Construction Work') : formatRoadName(tags);
 
             let feat = null;
 
@@ -1693,10 +1780,20 @@ async function updateParkingData() {
             } else if (el.geometry?.length >= 2) {
                 feat = { 
                     type: "Feature", 
-                    properties: { status, maxstay: tags.maxstay || 'N/A', fee: tags.fee || 'None', name: roadName }, 
+                    properties: { 
+                        status, 
+                        maxstay: status === 'roadwork' ? 'Roadwork Active' : (tags.maxstay || 'N/A'), 
+                        fee: status === 'roadwork' ? 'N/A' : (tags.fee || 'None'), 
+                        name: roadName 
+                    }, 
                     geometry: { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) } 
                 };
-                roads.push(feat);
+
+                if (status === 'roadwork') {
+                    roadworks.push(feat);
+                } else {
+                    roads.push(feat);
+                }
             }
 
             if (feat && window.turf) {
@@ -1719,10 +1816,14 @@ async function updateParkingData() {
         if (map.getSource("overpass")) {
             map.getSource("overpass").setData({ type: "FeatureCollection", features: roads });
         }
+        if (map.getSource("roadworks")) {
+            map.getSource("roadworks").setData({ type: "FeatureCollection", features: roadworks });
+        }
         if (map.getSource("parking-lots")) {
             map.getSource("parking-lots").setData({ type: "FeatureCollection", features: lots });
         }
 
+        renderRoadworkBadges(roadworks);
         renderSidePanel();
     }
 
@@ -1756,6 +1857,7 @@ function initMap(center) {
         }
 
         map.addSource("overpass", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        map.addSource("roadworks", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
         map.addSource("parking-lots", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
         
         map.addLayer({ 
@@ -1768,7 +1870,9 @@ function initMap(center) {
             } 
         }, labelLayerId);
 
+        // Standard Parking & Road Layers
         Object.entries(COLORS).forEach(([status, color]) => {
+            if (status === 'roadwork') return; // Handled separately with Apple-style dashes
             map.addLayer({ 
                 id: `layer-${status}`, 
                 type: "line", 
@@ -1786,11 +1890,37 @@ function initMap(center) {
             }, labelLayerId);
         });
 
+        // Apple Maps style Road Work Base Highlight Line
+        map.addLayer({
+            id: 'layer-roadwork-base',
+            type: 'line',
+            source: 'roadworks',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+                'line-color': '#ea580c',
+                'line-width': 10,
+                'line-opacity': 0.85
+            }
+        }, labelLayerId);
+
+        // Apple Maps style Dashed Striping overlay
+        map.addLayer({
+            id: 'layer-roadwork-dash',
+            type: 'line',
+            source: 'roadworks',
+            layout: { 'line-cap': 'butt', 'line-join': 'miter' },
+            paint: {
+                'line-color': '#fef08a',
+                'line-width': 6,
+                'line-dasharray': [1, 2]
+            }
+        }, labelLayerId);
+
         map.on("moveend", debouncedUpdateParkingData);
         
         map.on("click", (e) => {
             if (navActive) return;
-            const layersToCheck = [...Object.keys(COLORS).map(s => `layer-${s}`), 'lots-fill'];
+            const layersToCheck = [...Object.keys(COLORS).map(s => `layer-${s}`), 'layer-roadwork-base', 'lots-fill'];
             const features = map.queryRenderedFeatures(e.point, { layers: layersToCheck });
             if (features.length) {
                 const clickCoords = [e.lngLat.lng, e.lngLat.lat];
@@ -1807,8 +1937,19 @@ function showParkingDetails(props, coords) {
     selectedCardName = props.name || "Road Segment";
     selectedCardCoords = coords || (map ? map.getCenter().toArray() : null);
 
+    const iconWrap = document.getElementById("card-icon-wrap");
+    if (props.status === 'roadwork') {
+        iconWrap.style.background = "rgba(249, 115, 22, 0.2)";
+        iconWrap.style.borderColor = "rgba(249, 115, 22, 0.5)";
+        iconWrap.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>`;
+    } else {
+        iconWrap.style.background = "rgba(34, 197, 94, 0.2)";
+        iconWrap.style.borderColor = "rgba(34, 197, 94, 0.4)";
+        iconWrap.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="#86efac"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>`;
+    }
+
     document.getElementById("card-title").textContent = selectedCardName;
-    document.getElementById("card-type").textContent = (props.status || "PARKING").toUpperCase() + " PARKING";
+    document.getElementById("card-type").textContent = props.status === 'roadwork' ? "ACTIVE ROADWORK ZONE" : ((props.status || "PARKING").toUpperCase() + " PARKING");
     
     const badge = document.getElementById("card-status-badge");
     badge.textContent = props.status;
