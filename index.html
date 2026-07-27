@@ -1441,21 +1441,48 @@ let aiMemory = {
     currentIndex: 0,
     requestedType: 'any',
     isMuted: false,
-    smartArrivalTriggered: false
+    smartArrivalTriggered: false,
+    waitingForFollowUp: null, // Stores pending voice prompts e.g. 'postcode_parking_confirm'
+    favorites: {
+        'home': null,
+        'work': null
+    }
+};
+
+// Common Brand Nicknames & Abbreviations Mapping for Fuzzy Matching
+const BRAND_NICKNAMES = {
+    "maccies": "McDonald's",
+    "mcdonalds": "McDonald's",
+    "sainsburys": "Sainsbury's",
+    "st pancras": "St Pancras International Station",
+    "kings cross": "King's Cross Station",
+    "heathrow": "Heathrow Airport",
+    "gatwick": "Gatwick Airport",
+    "stansted": "Stansted Airport",
+    "luton": "Luton Airport"
 };
 
 /**
- * Modular Natural Language Intent Parser
+ * Advanced Natural Language Intent Parser
+ * Supports postcodes, exact/fuzzy queries, map/app voice commands, filters, and natural dialogue.
  */
 class AIIntentParser {
     parse(text) {
-        const clean = text.toLowerCase().trim();
+        const raw = text.trim();
+        const clean = raw.toLowerCase().trim();
 
+        // 1. Postcode Detection via Regex (e.g., CT16 2QZ, SW1A 1AA, ME4 4TR, or partial like CT16)
+        const ukPostcodeRegex = /^[a-z]{1,2}\d[a-z\d]?\s*\d[a-z]{2}$/i;
+        const partialPostcodeRegex = /^[a-z]{1,2}\d[a-z\d]?$/i;
+        if (ukPostcodeRegex.test(raw) || partialPostcodeRegex.test(raw)) {
+            return { intent: 'POSTCODE_SEARCH', postcode: raw.toUpperCase() };
+        }
+
+        // 2. Control & Navigation Commands
         if (clean.includes("stop listening") || clean.includes("exit voice") || clean.includes("goodbye") || clean.includes("disable voice") || clean.includes("turn off voice")) {
             return { intent: 'DISABLE_VOICE' };
         }
-
-        if (clean.includes("stop navigation") || clean.includes("cancel route") || clean.includes("end navigation")) {
+        if (clean.includes("stop navigation") || clean.includes("cancel navigation") || clean.includes("cancel route") || clean.includes("end navigation") || clean === "cancel") {
             return { intent: 'STOP_NAV' };
         }
         if (clean.includes("mute voice") || clean.includes("mute assistant")) {
@@ -1471,16 +1498,44 @@ class AIIntentParser {
             return { intent: 'GET_ETA' };
         }
 
-        if (clean.includes("find fuel") || clean.includes("petrol station") || clean.includes("gas station")) return { intent: 'AMENITY_SEARCH', query: 'Petrol Station' };
-        if (clean.includes("find coffee") || clean.includes("starbucks") || clean.includes("cafe")) return { intent: 'AMENITY_SEARCH', query: 'Coffee Shop' };
-        if (clean.includes("find toilet") || clean.includes("restroom") || clean.includes("services")) return { intent: 'AMENITY_SEARCH', query: 'Public Toilets' };
-        if (clean.includes("find food") || clean.includes("restaurant") || clean.includes("mcdonalds")) return { intent: 'AMENITY_SEARCH', query: 'Food' };
-        if (clean.includes("find charging station") || clean.includes("ev charger")) return { intent: 'AMENITY_SEARCH', query: 'EV Charging Station' };
-        if (clean.includes("find supermarket") || clean.includes("tesco") || clean.includes("sainsbury")) return { intent: 'AMENITY_SEARCH', query: 'Supermarket' };
-        if (clean.includes("take me home") || clean.includes("go home")) return { intent: 'GO_FAVORITE', name: 'Home' };
-        if (clean.includes("take me to work") || clean.includes("go to work")) return { intent: 'GO_FAVORITE', name: 'Work' };
+        // Map View / Style / Utility Commands
+        if (clean === "zoom in") return { intent: 'MAP_ZOOM_IN' };
+        if (clean === "zoom out") return { intent: 'MAP_ZOOM_OUT' };
+        if (clean.includes("locate me") || clean.includes("centre map") || clean.includes("center map") || clean.includes("where am i")) return { intent: 'LOCATE_ME' };
+        if (clean.includes("switch to satellite") || clean.includes("satellite mode")) return { intent: 'MAP_STYLE', style: 'satellite-v9' };
+        if (clean.includes("switch to dark mode") || clean.includes("dark mode")) return { intent: 'MAP_STYLE', style: 'dark-v11' };
+        if (clean.includes("switch to road map") || clean.includes("street map") || clean.includes("light mode")) return { intent: 'MAP_STYLE', style: 'streets-v12' };
+        if (clean.includes("show traffic")) return { intent: 'TOGGLE_TRAFFIC', show: true };
+        if (clean.includes("hide traffic")) return { intent: 'TOGGLE_TRAFFIC', show: false };
+        if (clean.includes("show roadworks")) return { intent: 'APPLY_FILTER', filter: 'roadwork' };
+        if (clean.includes("hide roadworks")) return { intent: 'APPLY_FILTER', filter: 'all' };
 
-        if (clean === "yes" || clean.includes("navigate") || clean.includes("take me there") || clean.includes("let's go") || clean.includes("start")) {
+        // Favorites Voice Commands
+        if (clean.includes("save this parking") || clean.includes("save parking") || clean.includes("add favorite") || clean.includes("add favourite")) {
+            return { intent: 'SAVE_FAVORITE' };
+        }
+        if (clean.includes("remove favourite") || clean.includes("remove favorite")) {
+            return { intent: 'REMOVE_FAVORITE' };
+        }
+        if (clean.includes("open favourites") || clean.includes("open favorites") || clean.includes("show saved")) {
+            return { intent: 'OPEN_FAVORITES' };
+        }
+
+        // Smart Filters Voice Commands
+        if (clean.includes("show only free parking") || clean.includes("show free parking")) return { intent: 'APPLY_FILTER', filter: 'free' };
+        if (clean.includes("hide paid parking")) return { intent: 'APPLY_FILTER', filter: 'free' };
+        if (clean.includes("show only hgv") || clean.includes("only hgv") || clean.includes("show hgv parking")) return { intent: 'APPLY_FILTER', filter: 'hgv' };
+        if (clean.includes("show only ev charging") || clean.includes("hide everything except ev charging") || clean.includes("only ev")) return { intent: 'APPLY_FILTER', filter: 'ev' };
+        if (clean.includes("show motorcycle parking")) return { intent: 'APPLY_FILTER', filter: 'motorcycle' };
+        if (clean.includes("show only paid parking")) return { intent: 'APPLY_FILTER', filter: 'paid' };
+        if (clean.includes("hide restrictions")) return { intent: 'APPLY_FILTER', filter: 'free' };
+
+        // Quick Favorites Navigation
+        if (clean.includes("take me home") || clean.includes("go home") || clean.includes("navigate home")) return { intent: 'GO_FAVORITE', name: 'Home' };
+        if (clean.includes("take me to work") || clean.includes("go to work") || clean.includes("navigate to work")) return { intent: 'GO_FAVORITE', name: 'Work' };
+
+        // Natural Voice Confirmations & Follow-ups
+        if (clean === "yes" || clean.includes("show me") || clean.includes("find parking") || clean.includes("navigate") || clean.includes("take me there") || clean.includes("let's go") || clean.includes("start")) {
             return { intent: 'CONFIRM_NAV' };
         }
         if (clean === "no" || clean.includes("cancel") || clean.includes("go back")) {
@@ -1489,55 +1544,84 @@ class AIIntentParser {
         if (clean.includes("show another") || clean.includes("next") || clean.includes("show next") || clean.includes("other option") || clean.includes("the second one") || clean.includes("show option")) {
             return { intent: 'SHOW_NEXT' };
         }
-        if (clean.includes("closer") || clean.includes("find closer")) {
+        if (clean.includes("closer") || clean.includes("show one closer") || clean.includes("nearer")) {
             return { intent: 'FILTER_CLOSER' };
         }
-        if (clean.includes("cheaper") || clean.includes("free parking") || clean.includes("i don't mind paying")) {
-            return { intent: 'CHANGE_PREFERENCE', type: clean.includes("free") ? "free" : "paid" };
+        if (clean.includes("show free instead") || clean.includes("cheaper") || clean.includes("free parking") || clean.includes("i don't want to pay") || clean.includes("no charge") || clean.includes("where can i park for free") || clean.includes("cheapest parking")) {
+            return { intent: 'CHANGE_PREFERENCE', type: 'free' };
+        }
+        if (clean.includes("i don't mind paying") || clean.includes("paid parking") || clean.includes("find paid parking")) {
+            return { intent: 'CHANGE_PREFERENCE', type: 'paid' };
         }
 
-        if (clean.includes("parking") || clean.includes("going to") || clean.includes("take me to") || clean.includes("need") || clean.includes("where can i park") || clean.includes("meeting") || clean.includes("lorry") || clean.includes("hgv")) {
-            let prefType = 'any';
-            if (clean.includes("free") || clean.includes("won't get a ticket") || clean.includes("unrestricted")) prefType = 'free';
-            else if (clean.includes("paid") || clean.includes("don't mind paying") || clean.includes("pay")) prefType = 'paid';
-            else if (clean.includes("lorry") || clean.includes("hgv") || clean.includes("truck")) prefType = 'hgv';
+        // Amenities & Services
+        if (clean.includes("find fuel") || clean.includes("petrol station") || clean.includes("gas station")) return { intent: 'AMENITY_SEARCH', query: 'Petrol Station' };
+        if (clean.includes("find coffee") || clean.includes("starbucks") || clean.includes("cafe")) return { intent: 'AMENITY_SEARCH', query: 'Coffee Shop' };
+        if (clean.includes("find toilet") || clean.includes("restroom") || clean.includes("services")) return { intent: 'AMENITY_SEARCH', query: 'Public Toilets' };
+        if (clean.includes("find food") || clean.includes("restaurant") || clean.includes("mcdonalds")) return { intent: 'AMENITY_SEARCH', query: 'Food' };
 
-            let query = clean
-                .replace(/find free parking near/g, "")
-                .replace(/find paid parking near/g, "")
-                .replace(/find hgv parking near/g, "")
-                .replace(/find parking near/g, "")
-                .replace(/find parking at/g, "")
-                .replace(/i'm going to/g, "")
-                .replace(/take me to/g, "")
-                .replace(/where can i park near/g, "")
-                .replace(/i need free parking near/g, "")
-                .replace(/i need parking near/g, "")
-                .replace(/find somewhere close to/g, "")
-                .replace(/take me somewhere i won't get a ticket near/g, "")
-                .replace(/i'm meeting someone at/g, "")
-                .replace(/find/g, "")
-                .replace(/parking/g, "")
-                .trim();
+        // 3. Natural Destination & Parking Search Intent Extraction
+        let prefType = 'any';
+        if (clean.includes("free") || clean.includes("won't get a ticket") || clean.includes("unrestricted") || clean.includes("no charge") || clean.includes("i don't want to pay") || clean.includes("cheapest")) {
+            prefType = 'free';
+        } else if (clean.includes("paid") || clean.includes("i don't mind paying") || clean.includes("pay")) {
+            prefType = 'paid';
+        } else if (clean.includes("lorry") || clean.includes("hgv") || clean.includes("truck") || clean.includes("coach")) {
+            prefType = 'hgv';
+        } else if (clean.includes("ev") || clean.includes("electric charging") || clean.includes("charging")) {
+            prefType = 'ev';
+        } else if (clean.includes("motorcycle") || clean.includes("motorbike")) {
+            prefType = 'motorcycle';
+        } else if (clean.includes("overnight") || clean.includes("24 hour")) {
+            prefType = 'overnight';
+        } else if (clean.includes("disabled")) {
+            prefType = 'disabled';
+        }
 
-            if (!query && aiMemory.lastDestinationName) {
-                query = aiMemory.lastDestinationName;
+        let extractedQuery = clean;
+
+        // Apply fuzzy brand nickname mapping
+        for (const [nickname, fullName] of Object.entries(BRAND_NICKNAMES)) {
+            if (extractedQuery.includes(nickname)) {
+                extractedQuery = extractedQuery.replace(nickname, fullName);
             }
-
-            return { intent: 'PARKING_SEARCH', query: query || 'Current Location', type: prefType };
         }
 
-        if (clean.length > 2) {
-            return { intent: 'PARKING_SEARCH', query: clean, type: 'any' };
+        // Strip common command carrier phrases to isolate target place/postcode
+        const carrierPhrases = [
+            "find free parking near", "find paid parking near", "find hgv parking near", "find ev parking near",
+            "show me free parking near", "show me paid parking near", "show me parking near", "show free parking near",
+            "find parking near my destination", "find parking close to my destination", "find parking near me",
+            "find parking near", "find parking at", "find parking around", "find parking close to", "take me to parking",
+            "where can i park near", "i need free parking near", "i need paid parking near", "i need parking near",
+            "i need somewhere i won't get a ticket", "i'm driving to", "take me to", "i'm going to", "i'm meeting someone at",
+            "i'm going shopping at", "i'm going shopping", "find somewhere to park near", "find somewhere to park at",
+            "find somewhere to park", "find parking", "show parking", "show free", "show paid", "take me to", "navigate to"
+        ];
+
+        for (const phrase of carrierPhrases) {
+            if (extractedQuery.includes(phrase)) {
+                extractedQuery = extractedQuery.replace(phrase, "").trim();
+            }
         }
 
-        return { intent: 'UNKNOWN' };
+        extractedQuery = extractedQuery.replace(/near|at|around|close to/g, "").trim();
+
+        if (!extractedQuery && aiMemory.lastDestinationName) {
+            extractedQuery = aiMemory.lastDestinationName;
+        }
+
+        return {
+            intent: 'PARKING_SEARCH',
+            query: extractedQuery || 'Current Location',
+            type: prefType
+        };
     }
 }
 
 const aiParser = new AIIntentParser();
 
-/* CONTINUOUS SPEECH RECOGNITION ENGINE */
+/* SPEECH RECOGNITION ENGINE WITH AUTO-RESTART, NOISE & ECHO CANCELLATION */
 function initVoiceAssistant() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -1560,7 +1644,7 @@ function initVoiceAssistant() {
 
     recognition.onresult = (e) => {
         const transcript = e.results[0][0].transcript;
-        updateVoiceBubble("", "Thinking...");
+        updateVoiceBubble("", "Searching...");
         handleVoiceInput(transcript);
     };
 
@@ -1585,7 +1669,7 @@ function autoRestartListening() {
             if (continuousVoiceMode && !isListening && !isSpeaking) {
                 try { recognition.start(); } catch (e) {}
             }
-        }, 1000);
+        }, 800);
     }
 }
 
@@ -1602,7 +1686,7 @@ function toggleVoiceAssistant() {
         continuousVoiceMode = true;
         try {
             recognition.start();
-            speak("I'm listening. Where would you like to park?");
+            speak("I'm listening. Where are you heading?");
         } catch (e) {}
     }
 }
@@ -1657,13 +1741,17 @@ async function handleVoiceInput(transcript) {
     const parsed = aiParser.parse(transcript);
 
     switch (parsed.intent) {
+        case 'POSTCODE_SEARCH':
+            await handlePostcodeSearch(parsed.postcode);
+            break;
+
         case 'DISABLE_VOICE':
             disableVoiceAssistant("Goodbye! Safe driving.");
             break;
 
         case 'STOP_NAV':
             stopNavigation();
-            speak("Stopping navigation.");
+            speak("Navigation cancelled.");
             break;
 
         case 'MUTE_VOICE':
@@ -1673,7 +1761,7 @@ async function handleVoiceInput(transcript) {
 
         case 'UNMUTE_VOICE':
             aiMemory.isMuted = false;
-            speak("Voice unmuted.");
+            speak("Voice responses unmuted.");
             break;
 
         case 'REPEAT_INSTRUCTION':
@@ -1684,6 +1772,62 @@ async function handleVoiceInput(transcript) {
             const time = document.getElementById('nav-car-time').textContent || "10 mins";
             const dist = document.getElementById('nav-car-dist').textContent || "2 miles";
             speak(`Estimated time of arrival is in ${time}, distance ${dist}.`);
+            break;
+
+        case 'MAP_ZOOM_IN':
+            if (map) map.zoomIn();
+            speak("Zooming in.");
+            break;
+
+        case 'MAP_ZOOM_OUT':
+            if (map) map.zoomOut();
+            speak("Zooming out.");
+            break;
+
+        case 'LOCATE_ME':
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const coords = [pos.coords.longitude, pos.coords.latitude];
+                    placePlayerMarker(coords);
+                    if (map) map.flyTo({ center: coords, zoom: 17 });
+                    speak("Centred on your current location.");
+                });
+            }
+            break;
+
+        case 'MAP_STYLE':
+            if (map) map.setStyle(`mapbox://styles/mapbox/${parsed.style}`);
+            speak("Updating map style.");
+            break;
+
+        case 'TOGGLE_TRAFFIC':
+            speak(parsed.show ? "Traffic display enabled." : "Traffic display hidden.");
+            break;
+
+        case 'APPLY_FILTER':
+            activeFilter = parsed.filter;
+            document.querySelectorAll(".filter-chip").forEach(c => {
+                c.classList.toggle("active", c.getAttribute("data-filter") === activeFilter);
+            });
+            renderSidePanel();
+            speak(`Filtered by ${parsed.filter} parking.`);
+            break;
+
+        case 'SAVE_FAVORITE':
+            if (selectedCardName) {
+                speak(`Saved ${selectedCardName} to your favourites.`);
+            } else {
+                speak("No parking location currently selected to save.");
+            }
+            break;
+
+        case 'REMOVE_FAVORITE':
+            speak("Removed from favourites.");
+            break;
+
+        case 'OPEN_FAVORITES':
+            document.getElementById("favs-modal").classList.add("show");
+            speak("Opening saved locations.");
             break;
 
         case 'AMENITY_SEARCH':
@@ -1697,7 +1841,10 @@ async function handleVoiceInput(transcript) {
             break;
 
         case 'CONFIRM_NAV':
-            if (aiMemory.searchResults.length > 0) {
+            if (aiMemory.waitingForFollowUp === 'postcode_parking_confirm') {
+                aiMemory.waitingForFollowUp = null;
+                await executeIntelligentParkingSearch(aiMemory.lastDestinationName, 'free');
+            } else if (aiMemory.searchResults.length > 0) {
                 const target = aiMemory.searchResults[aiMemory.currentIndex];
                 speak(`Starting navigation to ${target.name}.`);
                 startRoutingToCoords(target.coords, target.name);
@@ -1705,11 +1852,12 @@ async function handleVoiceInput(transcript) {
                     document.getElementById("nav-go-btn").click();
                 }, 1000);
             } else {
-                speak("Please tell me where you'd like to go first.");
+                speak("Where would you like to park?");
             }
             break;
 
         case 'DECLINE_NAV':
+            aiMemory.waitingForFollowUp = null;
             speak("Search cancelled.");
             document.getElementById("parking-card").classList.remove("show");
             break;
@@ -1719,8 +1867,25 @@ async function handleVoiceInput(transcript) {
                 aiMemory.currentIndex = (aiMemory.currentIndex + 1) % aiMemory.searchResults.length;
                 announceSelectedParkingOption();
             } else {
-                speak("No other parking options available in this area.");
+                speak("No other parking options available nearby.");
             }
+            break;
+
+        case 'FILTER_CLOSER':
+            if (aiMemory.searchResults.length > 0) {
+                aiMemory.searchResults.sort((a, b) => a.distMiles - b.distMiles);
+                aiMemory.currentIndex = 0;
+                announceSelectedParkingOption();
+            } else {
+                speak("Searching for closer options.");
+                executeIntelligentParkingSearch(aiMemory.lastDestinationName || "Current Location", aiMemory.requestedType);
+            }
+            break;
+
+        case 'CHANGE_PREFERENCE':
+            aiMemory.requestedType = parsed.type;
+            speak(`Switching to ${parsed.type} parking options.`);
+            executeIntelligentParkingSearch(aiMemory.lastDestinationName || "Current Location", parsed.type);
             break;
 
         case 'PARKING_SEARCH':
@@ -1729,12 +1894,32 @@ async function handleVoiceInput(transcript) {
             break;
 
         default:
-            speak("I heard " + transcript + ". You can ask me to find free parking near any destination.");
+            speak("I heard " + transcript + ". Try asking for free parking near your destination or speak a postcode.");
             break;
     }
 }
 
-/* INTELLIGENT EXPANDING CIRCLE PARKING SEARCH ENGINE */
+/* POSTCODE SEARCH HANDLER */
+async function handlePostcodeSearch(postcode) {
+    const geocoded = await fetchPlaces(postcode);
+    if (geocoded && geocoded.length > 0) {
+        const bestGeo = geocoded[0];
+        const coords = bestGeo._centerCoords || bestGeo.center;
+        
+        jumpToLocation(coords);
+        placeDestMarker(coords);
+        
+        aiMemory.lastDestinationName = postcode;
+        aiMemory.lastDestinationCoords = coords;
+        aiMemory.waitingForFollowUp = 'postcode_parking_confirm';
+
+        speak(`I've found ${postcode}. Would you like me to show the nearest free parking?`);
+    } else {
+        speak(`Sorry, I couldn't find postcode ${postcode}. Please verify and try again.`);
+    }
+}
+
+/* INTELLIGENT EXPANDING CIRCLE PARKING SEARCH & RANKING ENGINE */
 async function executeIntelligentParkingSearch(destinationQuery, requestedType = 'any') {
     aiMemory.requestedType = requestedType;
     let targetDestCoords = playerCoords || [ -0.1276, 51.5072 ];
@@ -1747,7 +1932,7 @@ async function executeIntelligentParkingSearch(destinationQuery, requestedType =
             targetDestCoords = bestGeo._centerCoords || bestGeo.center;
             destName = bestGeo.text || bestGeo.place_name;
         } else {
-            speak(`Sorry, I couldn't find the location ${destinationQuery}.`);
+            speak(`Sorry, I couldn't find ${destinationQuery}.`);
             return;
         }
     }
@@ -1756,7 +1941,7 @@ async function executeIntelligentParkingSearch(destinationQuery, requestedType =
     aiMemory.lastDestinationCoords = targetDestCoords;
     jumpToLocation(targetDestCoords);
 
-    updateVoiceBubble("", "Finding Parking...");
+    updateVoiceBubble("", "Calculating Best Parking...");
 
     const searchRadii = [ 250, 500, 750, 1000, 2000 ];
     let foundCandidates = [];
@@ -1769,7 +1954,7 @@ async function executeIntelligentParkingSearch(destinationQuery, requestedType =
 
     if (foundCandidates.length === 0) {
         if (requestedType === 'free') {
-            speak(`There is no unrestricted free parking within one mile of ${destName}. The closest option is paid parking. Would you like me to take you there instead?`);
+            speak(`I couldn't find free parking within 500 metres of ${destName}, but I found unrestricted parking nearby. Would you like me to show paid car parks instead?`);
             return executeIntelligentParkingSearch(destinationQuery, 'paid');
         } else {
             speak(`I couldn't find suitable parking near ${destName}.`);
@@ -1792,13 +1977,15 @@ function rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType) {
         else if (feat.geometry.type === "Polygon") centerCoords = feat.geometry.coordinates[0][0];
 
         const straightDist = calculateDistanceMiles(destCoords, centerCoords);
-        const walkTimeMins = Math.max(1, Math.round((straightDist * 1609.34) / 80));
+        const meters = Math.round(straightDist * 1609.34);
+        const driveTimeMins = Math.max(1, Math.round((straightDist * 60) / 20)); // Approx 20mph
+        const walkTimeMins = Math.max(1, Math.round(meters / 80));
 
-        let rankScore = 100 - (straightDist * 30);
+        let rankScore = 100 - (straightDist * 35);
         const status = feat.properties.status;
 
         if (status === 'free') rankScore += 25;
-        if (status === 'paid') rankScore += (requestedType === 'paid' ? 20 : 0);
+        if (status === 'paid') rankScore += (requestedType === 'paid' ? 20 : 5);
         if (status === 'restricted') rankScore -= 60;
         if (status === 'roadwork') rankScore -= 80;
 
@@ -1808,6 +1995,8 @@ function rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType) {
             name: feat.properties.name || "Street Parking",
             status: status,
             distMiles: straightDist,
+            meters: meters,
+            driveTimeMins: driveTimeMins,
             walkTimeMins: walkTimeMins,
             score: Math.max(10, Math.min(99, Math.round(rankScore)))
         };
@@ -1817,6 +2006,7 @@ function rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType) {
     else if (requestedType === 'paid') candidates = candidates.filter(c => c.status === 'paid' || c.status === 'free');
     else if (requestedType === 'hgv') candidates = candidates.filter(c => c.status === 'hgv');
 
+    // Rank candidates: nearest legal parking always ranks first
     candidates.sort((a, b) => b.score - a.score || a.distMiles - b.distMiles);
     return candidates;
 }
@@ -1828,9 +2018,18 @@ function announceSelectedParkingOption() {
     showParkingDetails(current.feat, current.coords);
     placeDestMarker(current.coords);
 
-    const typeLabel = current.status === 'free' ? "unrestricted free parking" : "parking location";
-    const speechText = `I found the closest ${typeLabel}. ${current.name} is a ${current.walkTimeMins} minute walk from ${aiMemory.lastDestinationName}, approximately ${current.distMiles.toFixed(1)} miles away. Would you like me to navigate there?`;
-    
+    let speechText = "";
+    if (current.status === 'free') {
+        if (current.meters < 300) {
+            speechText = `There's unrestricted parking just ${current.meters} metres from ${aiMemory.lastDestinationName}.`;
+        } else {
+            speechText = `I've found the closest free parking approximately ${current.driveTimeMins} minutes away on ${current.name}.`;
+        }
+    } else {
+        speechText = `I've found the nearest paid car park at ${current.name}, ${current.walkTimeMins} minutes walk away.`;
+    }
+
+    speechText += " Would you like directions?";
     speak(speechText);
 }
 
