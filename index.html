@@ -35,6 +35,7 @@
             --color-restricted: #ef4444;
             --color-hgv: #8b5cf6;
             --color-roadworks: #f97316;
+            --alexa-cyan: #00d2ff;
         }
 
         *, *::before, *::after {
@@ -452,7 +453,7 @@
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            border-radius: 100px;
             padding: 8px 10px;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -525,6 +526,7 @@
             display: flex;
             align-items: center;
             padding: 6px 6px 6px 18px;
+            gap: 6px;
         }
 
         #map-input {
@@ -550,11 +552,63 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 0.15s ease;
+            transition: transform 0.15s ease, background 0.2s ease;
             flex-shrink: 0;
         }
 
         .icon-btn:active { transform: scale(0.92); }
+
+        /* ALEXA MIC BUTTON STYLES */
+        .mic-btn {
+            background: rgba(0, 210, 255, 0.15);
+            border: 1px solid rgba(0, 210, 255, 0.4);
+            color: var(--alexa-cyan);
+            margin-right: 2px;
+        }
+
+        .mic-btn.listening {
+            animation: alexaPulse 1.2s infinite alternate;
+            background: rgba(0, 210, 255, 0.35);
+            border-color: var(--alexa-cyan);
+            color: #ffffff;
+        }
+
+        @keyframes alexaPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7); }
+            100% { transform: scale(1.12); box-shadow: 0 0 0 12px rgba(0, 210, 255, 0); }
+        }
+
+        /* ALEXA STATUS BANNER */
+        .voice-status-banner {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 72px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 25, 45, 0.95);
+            border: 1px solid var(--alexa-cyan);
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 8px 18px;
+            border-radius: 100px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 25px rgba(0, 210, 255, 0.3);
+            z-index: 2100;
+            backdrop-filter: blur(12px);
+        }
+
+        .voice-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--alexa-cyan);
+            box-shadow: 0 0 8px var(--alexa-cyan);
+            animation: blink 0.8s infinite alternate;
+        }
+
+        @keyframes blink { from { opacity: 0.3; } to { opacity: 1; } }
 
         /* SEARCH SUGGESTIONS DROPDOWN */
         .search-dropdown {
@@ -974,6 +1028,12 @@
 </head>
 <body>
 
+<!-- ALEXA VOICE ASSISTANT FEEDBACK BANNER -->
+<div id="voice-status-banner" class="voice-status-banner">
+    <div class="voice-dot"></div>
+    <span id="voice-status-text">Listening...</span>
+</div>
+
 <!-- HOME SCREEN -->
 <div id="home">
     <div class="home-content">
@@ -988,6 +1048,9 @@
         <div class="search-container">
             <div class="search-wrap">
                 <input id="home-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley), postcodes..." autocomplete="off" />
+                <button id="home-mic-btn" class="icon-btn mic-btn" title="Speak Command">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
                 <button id="home-btn" class="btn-primary">Search</button>
             </div>
 
@@ -1070,6 +1133,9 @@
     <div id="top-bar">
         <div class="glass-panel search-glass">
             <input id="map-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley)..." autocomplete="off" />
+            <button id="map-mic-btn" class="icon-btn mic-btn" title="Speak Command">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </button>
             <button id="map-btn" class="icon-btn" title="Search">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
@@ -1083,7 +1149,7 @@
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;">✕</button>
+            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;"></button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -1132,7 +1198,7 @@
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close">✕</button>
+            <button id="card-close-btn" class="card-close"></button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -1220,6 +1286,7 @@ let lastFetchedCenter = null;
 let cachedParkingFeatures = [];
 let roadworkMarkers = [];
 let activeFilter = "all";
+let dashAnimationStep = 0;
 
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
@@ -1254,6 +1321,7 @@ function setParkingLayersVisibility(visible) {
         map.setLayoutProperty('lots-fill', 'visibility', visibility);
     }
 
+    // Toggle Apple Maps style roadwork icons
     roadworkMarkers.forEach(m => {
         const el = m.getElement();
         if (el) el.style.display = visible ? 'flex' : 'none';
@@ -1559,6 +1627,7 @@ async function startRoutingToCoords(coords, name) {
 
 /* PARKING & ROAD WORK CLASSIFICATION */
 function classifyParking(tags) {
+    // Detect road works directly from OpenStreetMap active construction tags
     if (
         tags.highway === 'construction' || 
         tags.construction || 
@@ -1726,6 +1795,7 @@ async function updateParkingData() {
     document.getElementById("loader").classList.add("show");
 
     const radius = zoom > 14 ? 1200 : 2200;
+    // Enhanced Overpass Query to include active construction & roadwork tags
     const query = `[out:json][timeout:10];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[highway=construction];way(around:${radius},${center.lat},${center.lng})[barrier=road_works];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
 
     const endpoints = [
@@ -1866,8 +1936,9 @@ function initMap(center) {
             } 
         }, labelLayerId);
 
+        // Standard Parking & Road Layers
         Object.entries(COLORS).forEach(([status, color]) => {
-            if (status === 'roadwork') return;
+            if (status === 'roadwork') return; // Handled separately with Apple-style dashes
             map.addLayer({ 
                 id: `layer-${status}`, 
                 type: "line", 
@@ -1885,6 +1956,7 @@ function initMap(center) {
             }, labelLayerId);
         });
 
+        // Apple Maps style Road Work Base Highlight Line
         map.addLayer({
             id: 'layer-roadwork-base',
             type: 'line',
@@ -1897,6 +1969,7 @@ function initMap(center) {
             }
         }, labelLayerId);
 
+        // Apple Maps style Dashed Striping overlay
         map.addLayer({
             id: 'layer-roadwork-dash',
             type: 'line',
@@ -2043,11 +2116,164 @@ function stopNavigation() {
     debouncedUpdateParkingData();
 }
 
+// -------------------------------------------------------------
+// ALEXA VOICE ASSISTANT ENGINE
+// -------------------------------------------------------------
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = 'en-GB';
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+        showVoiceBanner("Listening...");
+        setMicButtonsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log("Voice Input Received:", transcript);
+        processVoiceCommand(transcript);
+    };
+
+    recognition.onend = () => {
+        setMicButtonsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+        setMicButtonsListening(false);
+        showVoiceBanner("Didn't catch that. Try again.");
+        speakResponse("Sorry, I didn't catch that. Please try again.");
+        hideVoiceBanner(2500);
+    };
+}
+
+function triggerVoiceSearch(activeInputId) {
+    if (!recognition) {
+        alert("Voice recognition is not supported in this browser. Try Chrome or Safari.");
+        return;
+    }
+
+    speakResponse("I'm listening.");
+    try {
+        recognition.start();
+    } catch (e) {
+        recognition.stop();
+        setTimeout(() => recognition.start(), 200);
+    }
+}
+
+function setMicButtonsListening(isListening) {
+    const homeMic = document.getElementById('home-mic-btn');
+    const mapMic = document.getElementById('map-mic-btn');
+    
+    if (isListening) {
+        if (homeMic) homeMic.classList.add('listening');
+        if (mapMic) mapMic.classList.add('listening');
+    } else {
+        if (homeMic) homeMic.classList.remove('listening');
+        if (mapMic) mapMic.classList.remove('listening');
+    }
+}
+
+function showVoiceBanner(text) {
+    const banner = document.getElementById('voice-status-banner');
+    const bannerText = document.getElementById('voice-status-text');
+    if (banner && bannerText) {
+        bannerText.textContent = text;
+        banner.style.display = 'flex';
+    }
+}
+
+function hideVoiceBanner(delay = 3000) {
+    setTimeout(() => {
+        const banner = document.getElementById('voice-status-banner');
+        if (banner) banner.style.display = 'none';
+    }, delay);
+}
+
+function speakResponse(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Interrupt previous speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-GB';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Female')));
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+function processVoiceCommand(rawCommand) {
+    const query = rawCommand.toLowerCase().trim();
+    showVoiceBanner(`"${rawCommand}"`);
+
+    // Command Intent 1: Locate user position
+    if (query.includes('locate me') || query.includes('my location') || query.includes('where am i')) {
+        speakResponse("Locating your current position.");
+        locateMe();
+        hideVoiceBanner(2000);
+        return;
+    }
+
+    // Command Intent 2: End Navigation Route
+    if (query.includes('end route') || query.includes('stop navigation') || query.includes('cancel route')) {
+        speakResponse("Ending navigation.");
+        stopNavigation();
+        hideVoiceBanner(2000);
+        return;
+    }
+
+    // Command Intent 3: Filter Free Parking
+    if (query.includes('free parking') || query.includes('find free parking') || query.includes('where can i park for free')) {
+        speakResponse("Filtering map for free parking zones nearby.");
+        
+        // Trigger UI Filter Chip
+        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+        const freeChip = document.querySelector('.filter-chip[data-filter="free"]');
+        if (freeChip) freeChip.classList.add("active");
+
+        activeFilter = "free";
+        renderSidePanel();
+
+        // Jump to map view if currently on home
+        document.getElementById("home").classList.add("hidden");
+        document.getElementById("ui").classList.add("visible");
+        if (!map) initMap([-0.1276, 51.5072]);
+
+        hideVoiceBanner(2500);
+        return;
+    }
+
+    // Command Intent 4: Standard Location / Venue Search
+    const cleanQuery = rawCommand.replace(/(search for|take me to|find|where is|navigate to|look up)/gi, '').trim();
+    
+    // Fill active search input box
+    const isHomeVisible = !document.getElementById("home").classList.contains("hidden");
+    const targetInputId = isHomeVisible ? "home-input" : "map-input";
+    document.getElementById(targetInputId).value = cleanQuery;
+
+    speakResponse(`Searching for ${cleanQuery}`);
+    handleSearch(targetInputId);
+    hideVoiceBanner(3000);
+}
+
 /* EVENT LISTENERS */
 document.getElementById("home-btn").addEventListener("click", () => handleSearch("home-input"));
 document.getElementById("map-btn").addEventListener("click", () => handleSearch("map-input"));
 document.getElementById("home-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("home-input"); });
 document.getElementById("map-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("map-input"); });
+
+// MIC BUTTON EVENT LISTENERS
+document.getElementById("home-mic-btn").addEventListener("click", () => triggerVoiceSearch("home-input"));
+document.getElementById("map-mic-btn").addEventListener("click", () => triggerVoiceSearch("map-input"));
 
 document.getElementById("open-map-btn").addEventListener("click", () => {
     document.getElementById("home").classList.add("hidden");
