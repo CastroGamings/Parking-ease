@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#050816" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Parking Ease - Free Parking Finder & AI Assistant</title>
+    <title>Parking Ease - AI Driving Assistant & Parking Finder</title>
 
     <!-- Mapbox GL JS & CSS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Turf.js for Route Snapping & Distance Calculations -->
+    <!-- Turf.js for Calculations & Route Snapping -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <!-- Google Fonts -->
@@ -949,7 +949,6 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
         }
 
-        /* APPLE MAPS STYLE ROADWORK BADGE MARKER */
         .roadwork-marker-badge {
             width: 28px;
             height: 28px;
@@ -976,7 +975,6 @@
             fill: none;
         }
 
-        /* NEW UPGRADED COMPONENTS */
         /* AI Voice Status Floating Bubble */
         #voice-status-bubble {
             position: absolute;
@@ -1060,7 +1058,7 @@
         }
         .fav-item:hover, .sos-item:hover { background: rgba(37, 99, 235, 0.25); }
 
-        /* Custom Speed Camera & EV Markers */
+        /* Custom Speed Camera Marker */
         .speed-cam-marker {
             width: 24px;
             height: 24px;
@@ -1223,7 +1221,7 @@
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;"></button>
+            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;">✕</button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -1281,7 +1279,7 @@
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close"></button>
+            <button id="card-close-btn" class="card-close">✕</button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -1348,7 +1346,7 @@
     <div class="glass-panel modal-body">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3 style="font-weight: 800;">Saved Locations</h3>
-            <button id="favs-close-btn" class="card-close"></button>
+            <button id="favs-close-btn" class="card-close">✕</button>
         </div>
         <div id="favs-list" style="display: flex; flex-direction: column; gap: 8px;">
             <div class="fav-item" onclick="quickNavFav('Home')">
@@ -1368,7 +1366,7 @@
     <div class="glass-panel modal-body">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3 style="font-weight: 800; color: #ef4444;">Emergency Assistance</h3>
-            <button id="sos-close-btn" class="card-close"></button>
+            <button id="sos-close-btn" class="card-close">✕</button>
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
             <div class="sos-item" onclick="quickSearch('Hospital')">
@@ -1428,18 +1426,133 @@ let roadworkMarkers = [];
 let speedCamMarkers = [];
 let activeFilter = "all";
 
-// Speech Recognition & Synthesis
+// --- UPGRADED CONTINUOUS AI VOICE ASSISTANT SYSTEM ---
 let recognition = null;
 let isListening = false;
-let pendingVoiceDestination = null;
+let continuousVoiceMode = false;
+let isSpeaking = false;
+let restartVoiceTimeout = null;
 
-/* INITIALIZE VOICE ASSISTANT */
+// AI Memory & State Context
+let aiMemory = {
+    lastDestinationName: null,
+    lastDestinationCoords: null,
+    searchResults: [],
+    currentIndex: 0,
+    requestedType: 'any', // 'free', 'paid', 'hgv', 'any'
+    isMuted: false,
+    smartArrivalTriggered: false
+};
+
+/**
+ * Modular Natural Language Intent Parser
+ */
+class AIIntentParser {
+    parse(text) {
+        const clean = text.toLowerCase().trim();
+
+        // 1. Exit / Stop Voice Mode
+        if (clean.includes("stop listening") || clean.includes("exit voice") || clean.includes("goodbye") || clean.includes("disable voice") || clean.includes("turn off voice")) {
+            return { intent: 'DISABLE_VOICE' };
+        }
+
+        // 2. Navigation Control Commands
+        if (clean.includes("stop navigation") || clean.includes("cancel route") || clean.includes("end navigation")) {
+            return { intent: 'STOP_NAV' };
+        }
+        if (clean.includes("mute voice") || clean.includes("mute assistant")) {
+            return { intent: 'MUTE_VOICE' };
+        }
+        if (clean.includes("unmute voice") || clean.includes("unmute assistant")) {
+            return { intent: 'UNMUTE_VOICE' };
+        }
+        if (clean.includes("repeat instruction") || clean.includes("repeat") || clean.includes("say again")) {
+            return { intent: 'REPEAT_INSTRUCTION' };
+        }
+        if (clean.includes("how long left") || clean.includes("eta") || clean.includes("remaining time") || clean.includes("share eta")) {
+            return { intent: 'GET_ETA' };
+        }
+
+        // 3. Hands-Free En-Route Amenities
+        if (clean.includes("find fuel") || clean.includes("petrol station") || clean.includes("gas station")) return { intent: 'AMENITY_SEARCH', query: 'Petrol Station' };
+        if (clean.includes("find coffee") || clean.includes("starbucks") || clean.includes("cafe")) return { intent: 'AMENITY_SEARCH', query: 'Coffee Shop' };
+        if (clean.includes("find toilet") || clean.includes("restroom") || clean.includes("services")) return { intent: 'AMENITY_SEARCH', query: 'Public Toilets' };
+        if (clean.includes("find food") || clean.includes("restaurant") || clean.includes("mcdonalds")) return { intent: 'AMENITY_SEARCH', query: 'Food' };
+        if (clean.includes("find charging station") || clean.includes("ev charger")) return { intent: 'AMENITY_SEARCH', query: 'EV Charging Station' };
+        if (clean.includes("find supermarket") || clean.includes("tesco") || clean.includes("sainsbury")) return { intent: 'AMENITY_SEARCH', query: 'Supermarket' };
+        if (clean.includes("take me home") || clean.includes("go home")) return { intent: 'GO_FAVORITE', name: 'Home' };
+        if (clean.includes("take me to work") || clean.includes("go to work")) return { intent: 'GO_FAVORITE', name: 'Work' };
+
+        // 4. Multi-Turn Follow-Ups
+        if (clean === "yes" || clean.includes("navigate") || clean.includes("take me there") || clean.includes("let's go") || clean.includes("start")) {
+            return { intent: 'CONFIRM_NAV' };
+        }
+        if (clean === "no" || clean.includes("cancel") || clean.includes("go back")) {
+            return { intent: 'DECLINE_NAV' };
+        }
+        if (clean.includes("show another") || clean.includes("next") || clean.includes("show next") || clean.includes("other option") || clean.includes("the second one") || clean.includes("show option")) {
+            return { intent: 'SHOW_NEXT' };
+        }
+        if (clean.includes("closer") || clean.includes("find closer")) {
+            return { intent: 'FILTER_CLOSER' };
+        }
+        if (clean.includes("cheaper") || clean.includes("free parking") || clean.includes("i don't mind paying")) {
+            return { intent: 'CHANGE_PREFERENCE', type: clean.includes("free") ? "free" : "paid" };
+        }
+
+        // 5. Intelligent Destination & Parking Search Intent
+        if (clean.includes("parking") || clean.includes("going to") || clean.includes("take me to") || clean.includes("need") || clean.includes("where can i park") || clean.includes("meeting") || clean.includes("lorry") || clean.includes("hgv")) {
+            let prefType = 'any';
+            if (clean.includes("free") || clean.includes("won't get a ticket") || clean.includes("unrestricted")) prefType = 'free';
+            else if (clean.includes("paid") || clean.includes("don't mind paying") || clean.includes("pay")) prefType = 'paid';
+            else if (clean.includes("lorry") || clean.includes("hgv") || clean.includes("truck")) prefType = 'hgv';
+
+            let query = clean
+                .replace(/find free parking near/g, "")
+                .replace(/find paid parking near/g, "")
+                .replace(/find hgv parking near/g, "")
+                .replace(/find parking near/g, "")
+                .replace(/find parking at/g, "")
+                .replace(/i'm going to/g, "")
+                .replace(/take me to/g, "")
+                .replace(/where can i park near/g, "")
+                .replace(/i need free parking near/g, "")
+                .replace(/i need parking near/g, "")
+                .replace(/find somewhere close to/g, "")
+                .replace(/take me somewhere i won't get a ticket near/g, "")
+                .replace(/i'm meeting someone at/g, "")
+                .replace(/find/g, "")
+                .replace(/parking/g, "")
+                .trim();
+
+            if (!query && aiMemory.lastDestinationName) {
+                query = aiMemory.lastDestinationName;
+            }
+
+            return { intent: 'PARKING_SEARCH', query: query || 'Current Location', type: prefType };
+        }
+
+        // Default Direct Search
+        if (clean.length > 2) {
+            return { intent: 'PARKING_SEARCH', query: clean, type: 'any' };
+        }
+
+        return { intent: 'UNKNOWN' };
+    }
+}
+
+const aiParser = new AIIntentParser();
+
+/* CONTINUOUS SPEECH RECOGNITION ENGINE */
 function initVoiceAssistant() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
         console.warn("Speech Recognition API not supported in this browser.");
         return;
     }
+
+    if (recognition) return;
+
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
@@ -1454,40 +1567,83 @@ function initVoiceAssistant() {
     recognition.onresult = (e) => {
         const transcript = e.results[0][0].transcript;
         updateVoiceBubble("🧠", "Thinking...");
-        processVoiceCommand(transcript);
+        handleVoiceInput(transcript);
     };
 
-    recognition.onerror = () => {
-        hideVoiceBubble();
+    recognition.onerror = (err) => {
+        console.warn("Speech recognition error:", err.error);
+        isListening = false;
         document.querySelectorAll('.mic-btn').forEach(b => b.classList.remove('listening'));
+        autoRestartListening();
     };
 
     recognition.onend = () => {
         isListening = false;
         document.querySelectorAll('.mic-btn').forEach(b => b.classList.remove('listening'));
+        autoRestartListening();
     };
+}
+
+function autoRestartListening() {
+    if (continuousVoiceMode && !isSpeaking) {
+        clearTimeout(restartVoiceTimeout);
+        restartVoiceTimeout = setTimeout(() => {
+            if (continuousVoiceMode && !isListening && !isSpeaking) {
+                try { recognition.start(); } catch (e) {}
+            }
+        }, 1000);
+    }
 }
 
 function toggleVoiceAssistant() {
     if (!recognition) initVoiceAssistant();
     if (!recognition) {
-        alert("Voice assistant is not supported in this browser.");
+        alert("Voice assistant is not supported on this device/browser.");
         return;
     }
-    if (isListening) {
-        recognition.stop();
+
+    if (continuousVoiceMode) {
+        disableVoiceAssistant("Voice mode disabled.");
     } else {
-        recognition.start();
+        continuousVoiceMode = true;
+        try {
+            recognition.start();
+            speak("I'm listening. Where would you like to park?");
+        } catch (e) {}
     }
 }
 
+function disableVoiceAssistant(msg) {
+    continuousVoiceMode = false;
+    clearTimeout(restartVoiceTimeout);
+    if (recognition) try { recognition.stop(); } catch(e) {}
+    hideVoiceBubble();
+    if (msg) speak(msg);
+}
+
 function speak(text) {
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window) || aiMemory.isMuted) return;
     window.speechSynthesis.cancel();
+    isSpeaking = true;
     updateVoiceBubble("🗣", "Speaking...");
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.0;
-    utterance.onend = () => hideVoiceBubble();
+
+    utterance.onend = () => {
+        isSpeaking = false;
+        if (continuousVoiceMode) {
+            autoRestartListening();
+        } else {
+            hideVoiceBubble();
+        }
+    };
+
+    utterance.onerror = () => {
+        isSpeaking = false;
+        if (continuousVoiceMode) autoRestartListening();
+    };
+
     window.speechSynthesis.speak(utterance);
 }
 
@@ -1502,62 +1658,227 @@ function hideVoiceBubble() {
     document.getElementById("voice-status-bubble").classList.remove("show");
 }
 
-/* NATURAL VOICE NLP PARSER */
-async function processVoiceCommand(cmd) {
-    const text = cmd.toLowerCase().trim();
+/* HANDS-FREE VOICE COMMAND PROCESSOR */
+async function handleVoiceInput(transcript) {
+    const parsed = aiParser.parse(transcript);
 
-    // Confirm navigation follow-up
-    if ((text.includes("yes") || text.includes("navigate") || text.includes("take me there") || text.includes("start")) && pendingVoiceDestination) {
-        updateVoiceBubble("✅", "Navigation Started");
-        speak("Starting navigation.");
-        startRoutingToCoords(pendingVoiceDestination.coords, pendingVoiceDestination.name);
-        setTimeout(() => {
-            document.getElementById("nav-go-btn").click();
-            pendingVoiceDestination = null;
-        }, 1200);
-        return;
+    switch (parsed.intent) {
+        case 'DISABLE_VOICE':
+            disableVoiceAssistant("Goodbye! Safe driving.");
+            break;
+
+        case 'STOP_NAV':
+            stopNavigation();
+            speak("Stopping navigation.");
+            break;
+
+        case 'MUTE_VOICE':
+            aiMemory.isMuted = true;
+            updateVoiceBubble("🔇", "Muted");
+            break;
+
+        case 'UNMUTE_VOICE':
+            aiMemory.isMuted = false;
+            speak("Voice unmuted.");
+            break;
+
+        case 'REPEAT_INSTRUCTION':
+            speak(document.getElementById('rs-main-text').textContent || "Continuing on route.");
+            break;
+
+        case 'GET_ETA':
+            const time = document.getElementById('nav-car-time').textContent || "10 mins";
+            const dist = document.getElementById('nav-car-dist').textContent || "2 miles";
+            speak(`Estimated time of arrival is in ${time}, distance ${dist}.`);
+            break;
+
+        case 'AMENITY_SEARCH':
+            speak(`Searching for nearby ${parsed.query}.`);
+            quickSearch(parsed.query);
+            break;
+
+        case 'GO_FAVORITE':
+            speak(`Navigating to ${parsed.name}.`);
+            quickNavFav(parsed.name);
+            break;
+
+        case 'CONFIRM_NAV':
+            if (aiMemory.searchResults.length > 0) {
+                const target = aiMemory.searchResults[aiMemory.currentIndex];
+                speak(`Starting navigation to ${target.name}.`);
+                startRoutingToCoords(target.coords, target.name);
+                setTimeout(() => {
+                    document.getElementById("nav-go-btn").click();
+                }, 1000);
+            } else {
+                speak("Please tell me where you'd like to go first.");
+            }
+            break;
+
+        case 'DECLINE_NAV':
+            speak("Search cancelled.");
+            document.getElementById("parking-card").classList.remove("show");
+            break;
+
+        case 'SHOW_NEXT':
+            if (aiMemory.searchResults.length > 1) {
+                aiMemory.currentIndex = (aiMemory.currentIndex + 1) % aiMemory.searchResults.length;
+                announceSelectedParkingOption();
+            } else {
+                speak("No other parking options available in this area.");
+            }
+            break;
+
+        case 'PARKING_SEARCH':
+            updateVoiceBubble("🛰", "Searching...");
+            await executeIntelligentParkingSearch(parsed.query, parsed.type);
+            break;
+
+        default:
+            speak("I heard " + transcript + ". You can ask me to find free parking near any destination.");
+            break;
     }
+}
 
-    // Cancel / Stop
-    if (text.includes("cancel") || text.includes("stop navigation") || text.includes("stop")) {
-        stopNavigation();
-        speak("Navigation canceled.");
-        return;
-    }
+/* INTELLIGENT EXPANDING CIRCLE PARKING SEARCH ENGINE */
+async function executeIntelligentParkingSearch(destinationQuery, requestedType = 'any') {
+    aiMemory.requestedType = requestedType;
+    let targetDestCoords = playerCoords || [ -0.1276, 51.5072 ];
+    let destName = destinationQuery;
 
-    // Search near location patterns
-    if (text.includes("find") || text.includes("take me to") || text.includes("where can i park") || text.includes("parking near")) {
-        let cleanQuery = text
-            .replace("find free parking near", "")
-            .replace("find paid parking near", "")
-            .replace("find hgv parking near", "")
-            .replace("find parking near", "")
-            .replace("find somewhere i can park for free", "")
-            .replace("find parking within a five minute walk", "")
-            .replace("take me to", "")
-            .replace("find", "")
-            .trim();
-
-        if (!cleanQuery) cleanQuery = "Free Parking";
-
-        const features = await fetchPlaces(cleanQuery);
-        if (features.length) {
-            const best = features[0];
-            const targetCoords = best._centerCoords || best.center;
-            pendingVoiceDestination = { coords: targetCoords, name: best.text || best.place_name };
-            
-            const dist = best._distMiles ? best._distMiles.toFixed(1) : "0.4";
-            const responseText = `I found parking ${dist} miles from ${best.text || cleanQuery}. Would you like me to navigate there?`;
-            
-            jumpToLocation(targetCoords);
-            speak(responseText);
+    if (destinationQuery && destinationQuery !== 'Current Location') {
+        const geocoded = await fetchPlaces(destinationQuery);
+        if (geocoded && geocoded.length > 0) {
+            const bestGeo = geocoded[0];
+            targetDestCoords = bestGeo._centerCoords || bestGeo.center;
+            destName = bestGeo.text || bestGeo.place_name;
         } else {
-            speak("Sorry, I couldn't find any parking matching that request.");
+            speak(`Sorry, I couldn't find the location ${destinationQuery}.`);
+            return;
+        }
+    }
+
+    aiMemory.lastDestinationName = destName;
+    aiMemory.lastDestinationCoords = targetDestCoords;
+    jumpToLocation(targetDestCoords);
+
+    updateVoiceBubble("🅿", "Finding Parking...");
+
+    // Expanding Radius Search Circles (250m -> 500m -> 750m -> 1000m -> 2000m)
+    const searchRadii = [ 250, 500, 750, 1000, 2000 ];
+    let foundCandidates = [];
+
+    for (let radius of searchRadii) {
+        const rawFeatures = await fetchOverpassParkingAtCoords(targetDestCoords, radius);
+        foundCandidates = rankAndFilterParkingOptions(rawFeatures, targetDestCoords, requestedType);
+        if (foundCandidates.length > 0) break;
+    }
+
+    if (foundCandidates.length === 0) {
+        if (requestedType === 'free') {
+            speak(`There is no unrestricted free parking within one mile of ${destName}. The closest option is paid parking. Would you like me to take you there instead?`);
+            // Fallback search to paid parking
+            return executeIntelligentParkingSearch(destinationQuery, 'paid');
+        } else {
+            speak(`I couldn't find suitable parking near ${destName}.`);
         }
         return;
     }
 
-    speak("I heard: " + cmd + ". How can I assist with your parking?");
+    aiMemory.searchResults = foundCandidates;
+    aiMemory.currentIndex = 0;
+    announceSelectedParkingOption();
+}
+
+function rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType) {
+    if (!rawFeatures) return [];
+    const destPt = turf.point(destCoords);
+
+    let candidates = rawFeatures.map(feat => {
+        let centerCoords = null;
+        if (feat.geometry.type === "Point") centerCoords = feat.geometry.coordinates;
+        else if (feat.geometry.type === "LineString") centerCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+        else if (feat.geometry.type === "Polygon") centerCoords = feat.geometry.coordinates[0][0];
+
+        const straightDist = calculateDistanceMiles(destCoords, centerCoords);
+        const walkTimeMins = Math.max(1, Math.round((straightDist * 1609.34) / 80)); // 80m/min avg walk
+
+        // Smart Ranking Score Calculation
+        let rankScore = 100 - (straightDist * 30);
+        const status = feat.properties.status;
+
+        if (status === 'free') rankScore += 25;
+        if (status === 'paid') rankScore += (requestedType === 'paid' ? 20 : 0);
+        if (status === 'restricted') rankScore -= 60;
+        if (status === 'roadwork') rankScore -= 80;
+
+        return {
+            feat,
+            coords: centerCoords,
+            name: feat.properties.name || "Street Parking",
+            status: status,
+            distMiles: straightDist,
+            walkTimeMins: walkTimeMins,
+            score: Math.max(10, Math.min(99, Math.round(rankScore)))
+        };
+    });
+
+    // Filter based on requested intent
+    if (requestedType === 'free') candidates = candidates.filter(c => c.status === 'free');
+    else if (requestedType === 'paid') candidates = candidates.filter(c => c.status === 'paid' || c.status === 'free');
+    else if (requestedType === 'hgv') candidates = candidates.filter(c => c.status === 'hgv');
+
+    // Sort by Best Rank Score & Distance
+    candidates.sort((a, b) => b.score - a.score || a.distMiles - b.distMiles);
+    return candidates;
+}
+
+function announceSelectedParkingOption() {
+    const current = aiMemory.searchResults[aiMemory.currentIndex];
+    if (!current) return;
+
+    showParkingDetails(current.feat, current.coords);
+    placeDestMarker(current.coords);
+
+    const typeLabel = current.status === 'free' ? "unrestricted free parking" : "parking location";
+    const speechText = `I found the closest ${typeLabel}. ${current.name} is a ${current.walkTimeMins} minute walk from ${aiMemory.lastDestinationName}, approximately ${current.distMiles.toFixed(1)} miles away. Would you like me to navigate there?`;
+    
+    speak(speechText);
+}
+
+/* OVERPASS API DIRECT PARKING SEARCH */
+async function fetchOverpassParkingAtCoords(center, radiusMeters) {
+    const query = `[out:json][timeout:10];(way(around:${radiusMeters},${center[1]},${center[0]})[highway];way(around:${radiusMeters},${center[1]},${center[0]})[amenity=parking];);out geom tags;`;
+    const endpoint = "https://overpass-api.de/api/interpreter";
+
+    try {
+        const res = await fetch(endpoint, { method: "POST", body: "data=" + encodeURIComponent(query) });
+        if (!res.ok) return [];
+        const data = await res.json();
+        
+        let results = [];
+        data.elements.forEach(el => {
+            const tags = el.tags || {};
+            const status = classifyParking(tags);
+            if (status === 'restricted') return; // Skip illegal
+
+            if (el.geometry && el.geometry.length >= 2) {
+                results.push({
+                    type: "Feature",
+                    properties: {
+                        status: status,
+                        name: formatRoadName(tags),
+                        maxstay: tags.maxstay || "No Limit",
+                        fee: tags.fee || "None"
+                    },
+                    geometry: { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) }
+                });
+            }
+        });
+        return results;
+    } catch (e) {
+        return [];
+    }
 }
 
 /* HAVERSINE DISTANCE MATH (MILES) */
@@ -1576,7 +1897,8 @@ function calculateDistanceMiles(coord1, coord2) {
 /* AI PARKING SCORE CALCULATOR (0-100) */
 function calculateParkingScore(feat) {
     let score = 70;
-    const status = feat.properties.status;
+    const props = feat.properties || feat;
+    const status = props.status;
     const dist = feat._distMiles || 0.5;
 
     if (status === 'free') score += 25;
@@ -1588,8 +1910,9 @@ function calculateParkingScore(feat) {
     else if (dist > 1.0) score -= 15;
 
     score = Math.max(10, Math.min(99, score));
-    const stars = "★".repeat(Math.round(score / 20));
-    return `${stars} ${score}/100`;
+    const starCount = Math.round(score / 20);
+    const stars = "★".repeat(starCount) + "☆".repeat(5 - starCount);
+    return `${stars} ${score} / 100`;
 }
 
 /* VISIBILITY HELPER */
@@ -1683,6 +2006,14 @@ function processSnapToRoute(rawCoords, deviceHeading) {
         
         let calculatedHeading = turf.bearing(snapped, aheadPt);
         if (calculatedHeading < 0) calculatedHeading += 360;
+
+        // SMART ARRIVAL MODE DETECTOR (Trigger within 300 meters)
+        const distToDest = destCoords ? calculateDistanceMiles(snappedCoords, destCoords) : 999;
+        if (distToDest < 0.2 && !aiMemory.smartArrivalTriggered) {
+            aiMemory.smartArrivalTriggered = true;
+            speak("You are approaching your destination. Scanning for live available parking.");
+            executeIntelligentParkingSearch("Current Location", aiMemory.requestedType);
+        }
 
         return {
             snappedCoords: snappedCoords,
@@ -2024,7 +2355,7 @@ function renderSidePanel() {
     });
 }
 
-/* APPLE MAPS STYLE ROADWORK BADGES */
+/* ROADWORK BADGES */
 function clearRoadworkMarkers() {
     roadworkMarkers.forEach(m => m.remove());
     roadworkMarkers = [];
@@ -2064,7 +2395,7 @@ function renderRoadworkBadges(roadworkFeatures) {
     });
 }
 
-/* OPTIMIZED OVERPASS DATA FETCHING WITH ROADWORK SUPPORT */
+/* OPTIMIZED OVERPASS DATA FETCHING */
 function debouncedUpdateParkingData() {
     clearTimeout(fetchDebounceTimeout);
     fetchDebounceTimeout = setTimeout(updateParkingData, 200);
@@ -2213,7 +2544,6 @@ function initMap(center) {
             }
         }
 
-        // Live Traffic Overlay
         if (map.getSource('mapbox-traffic')) {
             map.addLayer({
                 'id': 'live-traffic',
@@ -2248,7 +2578,6 @@ function initMap(center) {
             } 
         }, labelLayerId);
 
-        // Standard Parking & Road Layers
         Object.entries(COLORS).forEach(([status, color]) => {
             if (status === 'roadwork') return;
             map.addLayer({ 
@@ -2268,7 +2597,6 @@ function initMap(center) {
             }, labelLayerId);
         });
 
-        // Apple Maps style Road Work Base Highlight Line
         map.addLayer({
             id: 'layer-roadwork-base',
             type: 'line',
@@ -2281,7 +2609,6 @@ function initMap(center) {
             }
         }, labelLayerId);
 
-        // Apple Maps style Dashed Striping overlay
         map.addLayer({
             id: 'layer-roadwork-dash',
             type: 'line',
@@ -2422,6 +2749,7 @@ function quickNavFav(place) {
 
 function stopNavigation() {
     navActive = false;
+    aiMemory.smartArrivalTriggered = false;
     updateMarkerElement();
     
     document.getElementById("route-status").classList.remove("show");
