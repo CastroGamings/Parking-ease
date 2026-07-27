@@ -452,7 +452,7 @@
         .parking-item-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 100px;
+            border-radius: 12px;
             padding: 8px 10px;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -1083,7 +1083,7 @@
             <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
-            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;"></button>
+            <button id="dest-cancel-btn" class="card-close" style="flex-shrink:0;">✕</button>
         </div>
         <div id="dest-dropdown" class="search-dropdown"></div>
     </div>
@@ -1132,7 +1132,7 @@
                     <div id="card-type" class="card-subtitle">Street Parking</div>
                 </div>
             </div>
-            <button id="card-close-btn" class="card-close"></button>
+            <button id="card-close-btn" class="card-close">✕</button>
         </div>
         <div class="card-body">
             <div class="info-row">
@@ -1220,7 +1220,6 @@ let lastFetchedCenter = null;
 let cachedParkingFeatures = [];
 let roadworkMarkers = [];
 let activeFilter = "all";
-let dashAnimationStep = 0;
 
 /* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
@@ -1255,7 +1254,6 @@ function setParkingLayersVisibility(visible) {
         map.setLayoutProperty('lots-fill', 'visibility', visibility);
     }
 
-    // Toggle Apple Maps style roadwork icons
     roadworkMarkers.forEach(m => {
         const el = m.getElement();
         if (el) el.style.display = visible ? 'flex' : 'none';
@@ -1561,7 +1559,6 @@ async function startRoutingToCoords(coords, name) {
 
 /* PARKING & ROAD WORK CLASSIFICATION */
 function classifyParking(tags) {
-    // Detect road works directly from OpenStreetMap active construction tags
     if (
         tags.highway === 'construction' || 
         tags.construction || 
@@ -1729,7 +1726,6 @@ async function updateParkingData() {
     document.getElementById("loader").classList.add("show");
 
     const radius = zoom > 14 ? 1200 : 2200;
-    // Enhanced Overpass Query to include active construction & roadwork tags
     const query = `[out:json][timeout:10];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[highway=construction];way(around:${radius},${center.lat},${center.lng})[barrier=road_works];way(around:${radius},${center.lat},${center.lng})[amenity=parking];);out geom tags;`;
 
     const endpoints = [
@@ -1870,9 +1866,8 @@ function initMap(center) {
             } 
         }, labelLayerId);
 
-        // Standard Parking & Road Layers
         Object.entries(COLORS).forEach(([status, color]) => {
-            if (status === 'roadwork') return; // Handled separately with Apple-style dashes
+            if (status === 'roadwork') return;
             map.addLayer({ 
                 id: `layer-${status}`, 
                 type: "line", 
@@ -1890,7 +1885,6 @@ function initMap(center) {
             }, labelLayerId);
         });
 
-        // Apple Maps style Road Work Base Highlight Line
         map.addLayer({
             id: 'layer-roadwork-base',
             type: 'line',
@@ -1903,7 +1897,6 @@ function initMap(center) {
             }
         }, labelLayerId);
 
-        // Apple Maps style Dashed Striping overlay
         map.addLayer({
             id: 'layer-roadwork-dash',
             type: 'line',
