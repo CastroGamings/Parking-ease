@@ -12,7 +12,7 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Turf.js for Calculations & Distance Scoring -->
+    <!-- Turf.js for Calculations & Route Snapping -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <!-- Google Fonts -->
@@ -1058,6 +1058,22 @@
         }
         .fav-item:hover, .sos-item:hover { background: rgba(37, 99, 235, 0.25); }
 
+        /* Custom Speed Camera Marker */
+        .speed-cam-marker {
+            width: 24px;
+            height: 24px;
+            background: #ef4444;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
         /* RESPONSIVE MOBILE ADJUSTMENTS */
         @media (max-width: 600px) {
             .parking-side-panel {
@@ -1100,8 +1116,8 @@
             <div class="quick-suggestions">
                 <span class="quick-pill" onclick="quickSearch('Tesco')"> Tesco</span>
                 <span class="quick-pill" onclick="quickSearch('Wembley Stadium')"> Wembley Stadium</span>
-                <span class="quick-pill" onclick="quickSearch('CT16 2QZ')"> Postcode CT16 2QZ</span>
-                <span class="quick-pill" onclick="quickSearch('Bluewater')"> Bluewater</span>
+                <span class="quick-pill" onclick="quickSearch('Sainsbury\'s')"> Sainsbury's</span>
+                <span class="quick-pill" onclick="quickSearch('Train Station')"> Station</span>
             </div>
 
             <div class="home-actions">
@@ -1146,13 +1162,13 @@
 <div id="ui">
     <!-- VOICE STATUS BUBBLE -->
     <div id="voice-status-bubble" class="glass-panel">
-        <span id="voice-status-icon"></span>
+        <span id="voice-status-icon">🎤</span>
         <span id="voice-status-text">Listening...</span>
     </div>
 
     <!-- WEATHER LAYER WIDGET -->
     <div id="weather-widget" class="glass-panel">
-        <span id="weather-icon"></span>
+        <span id="weather-icon">🌧️</span>
         <span id="weather-text">14°C Light Rain</span>
     </div>
 
@@ -1229,7 +1245,7 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <span>Searching Destination & Parking...</span>
+        <span>Loading Parking & Live Data...</span>
     </div>
 
     <div class="fab-group">
@@ -1267,8 +1283,8 @@
         </div>
         <div class="card-body">
             <div class="info-row">
-                <span class="info-label">Distance to Dest.</span>
-                <span id="card-dest-dist" class="info-value" style="color:#86efac">-- m</span>
+                <span class="info-label">AI Parking Score</span>
+                <span id="card-score" class="info-value" style="color:#86efac">★★★★★ 94/100</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Status</span>
@@ -1334,11 +1350,11 @@
         </div>
         <div id="favs-list" style="display: flex; flex-direction: column; gap: 8px;">
             <div class="fav-item" onclick="quickNavFav('Home')">
-                <div><strong> Home</strong><br><span style="font-size:0.75rem; color:var(--text-sub)">Tap to navigate</span></div>
+                <div><strong>🏠 Home</strong><br><span style="font-size:0.75rem; color:var(--text-sub)">Tap to navigate</span></div>
                 <button class="btn-primary" style="padding: 6px 14px; font-size: 0.75rem;">Go</button>
             </div>
             <div class="fav-item" onclick="quickNavFav('Work')">
-                <div><strong> Work</strong><br><span style="font-size:0.75rem; color:var(--text-sub)">Tap to navigate</span></div>
+                <div><strong>💼 Work</strong><br><span style="font-size:0.75rem; color:var(--text-sub)">Tap to navigate</span></div>
                 <button class="btn-primary" style="padding: 6px 14px; font-size: 0.75rem;">Go</button>
             </div>
         </div>
@@ -1354,19 +1370,19 @@
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px;">
             <div class="sos-item" onclick="quickSearch('Hospital')">
-                <div><strong> Nearest Hospital</strong></div>
+                <div><strong>🏥 Nearest Hospital</strong></div>
                 <span style="color:#60a5fa; font-weight:700;">Find</span>
             </div>
             <div class="sos-item" onclick="quickSearch('Police Station')">
-                <div><strong> Police Station</strong></div>
+                <div><strong>🚓 Police Station</strong></div>
                 <span style="color:#60a5fa; font-weight:700;">Find</span>
             </div>
             <div class="sos-item" onclick="quickSearch('Garage Repair')">
-                <div><strong> Vehicle Recovery & Garage</strong></div>
+                <div><strong>🔧 Vehicle Recovery & Garage</strong></div>
                 <span style="color:#60a5fa; font-weight:700;">Find</span>
             </div>
             <div class="sos-item" onclick="quickSearch('Petrol Station')">
-                <div><strong> Petrol Station</strong></div>
+                <div><strong>⛽ Petrol Station</strong></div>
                 <span style="color:#60a5fa; font-weight:700;">Find</span>
             </div>
         </div>
@@ -1392,149 +1408,133 @@ let playerMarker = null;
 let playerCoords = null;
 let currentHeading = 0;
 let watchId = null;
-
-// Search & Destination State
 let destMarker = null;
-let destinationCoords = null;
-let destinationName = "";
-
-let selectedParkingCoords = null;
-let selectedParkingName = "";
-let selectedParkingFeature = null;
-
+let destCoords = null;
 let navActive = false;
 let navModeOn = false;
 let hgvModeActive = false;
 let activeRouteGeoJSON = null;
-
 let searchDebounceTimeout = null;
 let fetchDebounceTimeout = null;
+let selectedCardCoords = null;
+let selectedCardName = "";
 
 // Caching & Markers
 let lastFetchedCenter = null;
 let cachedParkingFeatures = [];
 let roadworkMarkers = [];
+let speedCamMarkers = [];
 let activeFilter = "all";
-const geocodeCache = new Map();
 
-// AI Voice Assistant State
+// --- UPGRADED CONTINUOUS AI VOICE ASSISTANT SYSTEM ---
 let recognition = null;
 let isListening = false;
 let continuousVoiceMode = false;
 let isSpeaking = false;
 let restartVoiceTimeout = null;
 
+// AI Memory & State Context
 let aiMemory = {
     lastDestinationName: null,
     lastDestinationCoords: null,
     searchResults: [],
     currentIndex: 0,
-    requestedType: 'any',
-    isMuted: false
+    requestedType: 'any', // 'free', 'paid', 'hgv', 'any'
+    isMuted: false,
+    smartArrivalTriggered: false
 };
 
-/* -------------------------------------------------------------------------- */
-/*                            UK POSTCODE UTILITIES                           */
-/* -------------------------------------------------------------------------- */
-
-function formatUKPostcode(raw) {
-    if (!raw) return null;
-    let clean = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    // UK Postcodes are 5 to 7 characters alphanumeric
-    if (clean.length < 5 || clean.length > 7) return null;
-    
-    // Insert space before the last 3 characters (Inward code)
-    let formatted = clean.slice(0, -3) + ' ' + clean.slice(-3);
-    
-    // Strict Regex for UK Postcode Validation
-    let postcodeRegex = /^([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})$/;
-    if (postcodeRegex.test(formatted)) {
-        return formatted;
-    }
-    return null;
-}
-
-function extractUkPostcode(text) {
-    if (!text) return null;
-    let match = text.match(/\b[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}\b/i);
-    if (match) return formatUKPostcode(match[0]);
-    let noSpaceMatch = text.match(/\b[A-Za-z]{1,2}\d[A-Za-z\d]?\d[A-Za-z]{2}\b/i);
-    if (noSpaceMatch) return formatUKPostcode(noSpaceMatch[0]);
-    return null;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                      NATURAL LANGUAGE INTENT PARSER                        */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Modular Natural Language Intent Parser
+ */
 class AIIntentParser {
     parse(text) {
         const clean = text.toLowerCase().trim();
 
-        // 1. Controls
+        // 1. Exit / Stop Voice Mode
         if (clean.includes("stop listening") || clean.includes("exit voice") || clean.includes("goodbye") || clean.includes("disable voice") || clean.includes("turn off voice")) {
             return { intent: 'DISABLE_VOICE' };
         }
-        if (clean.includes("stop navigation") || clean.includes("cancel route") || clean.includes("end navigation") || clean.includes("end route")) {
+
+        // 2. Navigation Control Commands
+        if (clean.includes("stop navigation") || clean.includes("cancel route") || clean.includes("end navigation")) {
             return { intent: 'STOP_NAV' };
         }
-        if (clean.includes("mute voice") || clean.includes("mute assistant")) return { intent: 'MUTE_VOICE' };
-        if (clean.includes("unmute voice") || clean.includes("unmute assistant")) return { intent: 'UNMUTE_VOICE' };
+        if (clean.includes("mute voice") || clean.includes("mute assistant")) {
+            return { intent: 'MUTE_VOICE' };
+        }
+        if (clean.includes("unmute voice") || clean.includes("unmute assistant")) {
+            return { intent: 'UNMUTE_VOICE' };
+        }
+        if (clean.includes("repeat instruction") || clean.includes("repeat") || clean.includes("say again")) {
+            return { intent: 'REPEAT_INSTRUCTION' };
+        }
+        if (clean.includes("how long left") || clean.includes("eta") || clean.includes("remaining time") || clean.includes("share eta")) {
+            return { intent: 'GET_ETA' };
+        }
 
-        // 2. Nav Confirmation
-        if (["navigate", "take me there", "yes", "start", "drive me", "let's go"].some(k => clean === k || clean.includes(k))) {
+        // 3. Hands-Free En-Route Amenities
+        if (clean.includes("find fuel") || clean.includes("petrol station") || clean.includes("gas station")) return { intent: 'AMENITY_SEARCH', query: 'Petrol Station' };
+        if (clean.includes("find coffee") || clean.includes("starbucks") || clean.includes("cafe")) return { intent: 'AMENITY_SEARCH', query: 'Coffee Shop' };
+        if (clean.includes("find toilet") || clean.includes("restroom") || clean.includes("services")) return { intent: 'AMENITY_SEARCH', query: 'Public Toilets' };
+        if (clean.includes("find food") || clean.includes("restaurant") || clean.includes("mcdonalds")) return { intent: 'AMENITY_SEARCH', query: 'Food' };
+        if (clean.includes("find charging station") || clean.includes("ev charger")) return { intent: 'AMENITY_SEARCH', query: 'EV Charging Station' };
+        if (clean.includes("find supermarket") || clean.includes("tesco") || clean.includes("sainsbury")) return { intent: 'AMENITY_SEARCH', query: 'Supermarket' };
+        if (clean.includes("take me home") || clean.includes("go home")) return { intent: 'GO_FAVORITE', name: 'Home' };
+        if (clean.includes("take me to work") || clean.includes("go to work")) return { intent: 'GO_FAVORITE', name: 'Work' };
+
+        // 4. Multi-Turn Follow-Ups
+        if (clean === "yes" || clean.includes("navigate") || clean.includes("take me there") || clean.includes("let's go") || clean.includes("start")) {
             return { intent: 'CONFIRM_NAV' };
         }
-
-        // 3. Extract Parking Preferences
-        let requestedType = 'any';
-        if (clean.includes("free") || clean.includes("unrestricted") || clean.includes("cheapest") || clean.includes("cheap")) requestedType = 'free';
-        else if (clean.includes("paid") || clean.includes("pay")) requestedType = 'paid';
-        else if (clean.includes("hgv") || clean.includes("lorry") || clean.includes("truck")) requestedType = 'hgv';
-        else if (clean.includes("disabled") || clean.includes("blue badge")) requestedType = 'disabled';
-        else if (clean.includes("ev") || clean.includes("charging")) requestedType = 'ev';
-        else if (clean.includes("timed")) requestedType = 'timed';
-
-        // 4. Postcode Detection Direct Trigger
-        let postcode = extractUkPostcode(clean);
-        if (postcode && clean.replace(postcode.toLowerCase(), '').trim().length < 5) {
-            return { intent: 'PARKING_SEARCH', destinationQuery: postcode, requestedType: 'any' };
+        if (clean === "no" || clean.includes("cancel") || clean.includes("go back")) {
+            return { intent: 'DECLINE_NAV' };
+        }
+        if (clean.includes("show another") || clean.includes("next") || clean.includes("show next") || clean.includes("other option") || clean.includes("the second one") || clean.includes("show option")) {
+            return { intent: 'SHOW_NEXT' };
+        }
+        if (clean.includes("closer") || clean.includes("find closer")) {
+            return { intent: 'FILTER_CLOSER' };
+        }
+        if (clean.includes("cheaper") || clean.includes("free parking") || clean.includes("i don't mind paying")) {
+            return { intent: 'CHANGE_PREFERENCE', type: clean.includes("free") ? "free" : "paid" };
         }
 
-        // 5. General Destination & Parking Extraction
-        let query = clean;
-        const stripPhrases = [
-            "find free parking near", "find paid parking near", "find hgv parking near", "find disabled parking near",
-            "find ev charging parking near", "find timed parking near", "find unrestricted parking near",
-            "closest free parking to", "cheapest parking near", "where can i park near", "take me to free parking at",
-            "show free parking near", "show me timed parking near", "show me disabled parking near", "parking near",
-            "parking at", "find parking near", "find parking at", "i need parking near", "where can i park at",
-            "take me to", "drive me to", "find parking close to", "find parking", "park my car near", "park my car at",
-            "park near", "park at", "near", "close to", "around", "next to", "by"
-        ];
+        // 5. Intelligent Destination & Parking Search Intent
+        if (clean.includes("parking") || clean.includes("going to") || clean.includes("take me to") || clean.includes("need") || clean.includes("where can i park") || clean.includes("meeting") || clean.includes("lorry") || clean.includes("hgv")) {
+            let prefType = 'any';
+            if (clean.includes("free") || clean.includes("won't get a ticket") || clean.includes("unrestricted")) prefType = 'free';
+            else if (clean.includes("paid") || clean.includes("don't mind paying") || clean.includes("pay")) prefType = 'paid';
+            else if (clean.includes("lorry") || clean.includes("hgv") || clean.includes("truck")) prefType = 'hgv';
 
-        let matchedStrip = false;
-        for (let phrase of stripPhrases) {
-            if (query.includes(phrase)) {
-                query = query.replace(phrase, " ").trim();
-                matchedStrip = true;
-                break;
+            let query = clean
+                .replace(/find free parking near/g, "")
+                .replace(/find paid parking near/g, "")
+                .replace(/find hgv parking near/g, "")
+                .replace(/find parking near/g, "")
+                .replace(/find parking at/g, "")
+                .replace(/i'm going to/g, "")
+                .replace(/take me to/g, "")
+                .replace(/where can i park near/g, "")
+                .replace(/i need free parking near/g, "")
+                .replace(/i need parking near/g, "")
+                .replace(/find somewhere close to/g, "")
+                .replace(/take me somewhere i won't get a ticket near/g, "")
+                .replace(/i'm meeting someone at/g, "")
+                .replace(/find/g, "")
+                .replace(/parking/g, "")
+                .trim();
+
+            if (!query && aiMemory.lastDestinationName) {
+                query = aiMemory.lastDestinationName;
             }
+
+            return { intent: 'PARKING_SEARCH', query: query || 'Current Location', type: prefType };
         }
 
-        // Clean up remaining noise words
-        query = query.replace(/\b(my destination|where i'm going|this postcode|the|a|an)\b/g, "").trim();
-
-        if (!query && aiMemory.lastDestinationName) {
-            query = aiMemory.lastDestinationName;
-        }
-
-        if (query.length > 0 || matchedStrip) {
-            return {
-                intent: 'PARKING_SEARCH',
-                destinationQuery: query.length > 0 ? query : 'Current Location',
-                requestedType: requestedType
-            };
+        // Default Direct Search
+        if (clean.length > 2) {
+            return { intent: 'PARKING_SEARCH', query: clean, type: 'any' };
         }
 
         return { intent: 'UNKNOWN' };
@@ -1543,232 +1543,35 @@ class AIIntentParser {
 
 const aiParser = new AIIntentParser();
 
-/* -------------------------------------------------------------------------- */
-/*                           GEOCODING WITH CACHING                           */
-/* -------------------------------------------------------------------------- */
-
-async function geocodeDestination(query) {
-    if (!query) return null;
-    let formattedPostcode = formatUKPostcode(query);
-    let searchQuery = formattedPostcode || query;
-    let cacheKey = searchQuery.toLowerCase().trim();
-
-    if (geocodeCache.has(cacheKey)) {
-        return geocodeCache.get(cacheKey);
-    }
-
-    try {
-        let prox = playerCoords ? `${playerCoords[0]},${playerCoords[1]}` : `-0.1276,51.5072`;
-        let types = formattedPostcode ? "postcode" : "poi,address,neighborhood,locality,place";
-        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${TOKEN}&country=gb&types=${types}&proximity=${prox}&limit=1`;
-
-        let res = await fetch(url);
-        let data = await res.json();
-
-        if (data && data.features && data.features.length > 0) {
-            let feat = data.features[0];
-            let result = {
-                coords: feat.center,
-                name: formattedPostcode || feat.text || feat.place_name,
-                full_name: feat.place_name,
-                isPostcode: !!formattedPostcode || feat.place_type.includes('postcode')
-            };
-            geocodeCache.set(cacheKey, result);
-            return result;
-        }
-    } catch (e) {
-        console.error("Geocoding failed", e);
-    }
-    return null;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                 EXPANDING RADIUS OVERPASS PARKING SEARCH                   */
-/* -------------------------------------------------------------------------- */
-
-async function fetchParkingAroundDestination(destCoords, requestedType) {
-    const radii = [100, 250, 500, 750, 1000, 1500, 2000];
-    const lat = destCoords[1];
-    const lon = destCoords[0];
-    const destPt = turf.point(destCoords);
-
-    for (let r of radii) {
-        let query = `[out:json][timeout:10];(way(around:${r},${lat},${lon})[highway];way(around:${r},${lat},${lon})[amenity=parking];);out geom tags;`;
-        try {
-            let res = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: "data=" + encodeURIComponent(query) });
-            if (!res.ok) continue;
-            let data = await res.json();
-            
-            if (!data.elements || data.elements.length === 0) continue;
-
-            let candidates = [];
-            data.elements.forEach(el => {
-                let tags = el.tags || {};
-                let status = classifyParking(tags);
-                if (status === 'restricted') return;
-
-                let geom = null;
-                let centerCoords = null;
-
-                if (el.geometry && el.geometry.length >= 2) {
-                    if (tags.amenity === "parking" && el.geometry.length > 2) {
-                        geom = { type: "Polygon", coordinates: [el.geometry.map(p => [p.lon, p.lat])] };
-                        let polyCenter = turf.centerOfMass(geom);
-                        centerCoords = polyCenter.geometry.coordinates;
-                    } else {
-                        geom = { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) };
-                        centerCoords = el.geometry[Math.floor(el.geometry.length / 2)];
-                        centerCoords = [centerCoords.lon, centerCoords.lat];
-                    }
-
-                    let straightDistMeters = turf.distance(destPt, turf.point(centerCoords), { units: 'meters' });
-                    let walkMins = Math.max(1, Math.round(straightDistMeters / 80));
-
-                    // Multi-Factor Scoring
-                    let score = 1000 - straightDistMeters;
-                    if (requestedType === 'free' && status === 'free') score += 500;
-                    if (requestedType === 'paid' && status === 'paid') score += 500;
-                    if (requestedType === 'hgv' && status === 'hgv') score += 500;
-                    if (status === 'free') score += 200;
-
-                    candidates.push({
-                        feature: {
-                            type: "Feature",
-                            properties: {
-                                status: status,
-                                name: tags.name || formatRoadName(tags),
-                                maxstay: tags.maxstay || "No Limit",
-                                fee: tags.fee || "None"
-                            },
-                            geometry: geom
-                        },
-                        coords: centerCoords,
-                        name: tags.name || formatRoadName(tags),
-                        status: status,
-                        distMeters: Math.round(straightDistMeters),
-                        walkMins: walkMins,
-                        score: score
-                    });
-                }
-            });
-
-            // Filter for matching requested preference if specific
-            let filtered = candidates;
-            if (requestedType === 'free') filtered = candidates.filter(c => c.status === 'free');
-            else if (requestedType === 'paid') filtered = candidates.filter(c => c.status === 'paid' || c.status === 'free');
-            else if (requestedType === 'hgv') filtered = candidates.filter(c => c.status === 'hgv');
-
-            if (filtered.length > 0) {
-                // Strict Sort by Distance & Score
-                filtered.sort((a, b) => b.score - a.score || a.distMeters - b.distMeters);
-                return { radiusFound: r, results: filtered, fallbackPaid: false };
-            }
-
-            // Fallback: If no free parking found, search paid
-            if (requestedType === 'free' && candidates.length > 0) {
-                candidates.sort((a, b) => a.distMeters - b.distMeters);
-                return { radiusFound: r, results: candidates, fallbackPaid: true };
-            }
-        } catch (e) {
-            console.warn(`Overpass fetch failed at ${r}m radius`, e);
-        }
-    }
-
-    return { radiusFound: 2000, results: [], fallbackPaid: false };
-}
-
-/* -------------------------------------------------------------------------- */
-/*                  MAIN EXECUTION: SEARCH PIPELINE (STEP 1-9)                */
-/* -------------------------------------------------------------------------- */
-
-async function processFullParkingPipeline(destinationQuery, requestedType = 'any') {
-    document.getElementById("loader").classList.add("show");
-    updateVoiceBubble("🔍", "Finding destination...");
-
-    // Step 1 & 2: Geocode destination FIRST
-    let destInfo = await geocodeDestination(destinationQuery);
-
-    if (!destInfo) {
-        document.getElementById("loader").classList.remove("show");
-        speak(`Sorry, I couldn't find the location ${destinationQuery}. Please try again.`);
-        return;
-    }
-
-    destinationCoords = destInfo.coords;
-    destinationName = destInfo.name;
-    aiMemory.lastDestinationName = destinationName;
-    aiMemory.lastDestinationCoords = destinationCoords;
-
-    // Move map camera directly to Destination
-    document.getElementById("home").classList.add("hidden");
-    document.getElementById("ui").classList.add("visible");
-    
-    if (!map) {
-        initMap(destinationCoords);
-    } else {
-        map.flyTo({ center: destinationCoords, zoom: 16.5, essential: true });
-    }
-
-    placeDestMarker(destinationCoords);
-    updateVoiceBubble("🅿️", `Searching parking near ${destinationName}...`);
-
-    // Step 3, 4, 5, 6: Search parking around DESTINATION (not user)
-    let searchRes = await fetchParkingAroundDestination(destinationCoords, requestedType);
-    document.getElementById("loader").classList.remove("show");
-
-    if (searchRes.results.length === 0) {
-        speak(`I couldn't find any ${requestedType !== 'any' ? requestedType : ''} parking within 2 kilometres of ${destinationName}.`);
-        return;
-    }
-
-    // Step 7, 8, 9: Select absolute closest, Display on map, Announce by Voice
-    let bestOption = searchRes.results[0];
-    selectedParkingCoords = bestOption.coords;
-    selectedParkingName = bestOption.name;
-    selectedParkingFeature = bestOption.feature;
-    aiMemory.searchResults = searchRes.results;
-    aiMemory.currentIndex = 0;
-
-    // Display on Map & Show Parking Card
-    showParkingDetails(bestOption.feature, bestOption.coords, bestOption.distMeters);
-
-    let statusText = bestOption.status === 'free' ? 'unrestricted free parking' : `${bestOption.status} parking`;
-    
-    if (searchRes.fallbackPaid) {
-        speak(`I couldn't find any free parking within 2 kilometres of ${destinationName}. The nearest paid parking is ${bestOption.distMeters} metres away on ${bestOption.name}. Would you like to navigate there?`);
-    } else {
-        speak(`I found the closest ${statusText} approximately ${bestOption.distMeters} metres from ${destinationName} on ${bestOption.name}. It is ${bestOption.status === 'free' ? 'unrestricted' : bestOption.status}. Would you like me to navigate there?`);
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-/*                           CONTINUOUS VOICE ENGINE                          */
-/* -------------------------------------------------------------------------- */
-
+/* CONTINUOUS SPEECH RECOGNITION ENGINE */
 function initVoiceAssistant() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+        console.warn("Speech Recognition API not supported in this browser.");
+        return;
+    }
 
     if (recognition) return;
 
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-GB';
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => {
         isListening = true;
-        updateVoiceBubble("🎙️", "Listening...");
+        updateVoiceBubble("🎤", "Listening...");
         document.querySelectorAll('.mic-btn').forEach(b => b.classList.add('listening'));
     };
 
     recognition.onresult = (e) => {
         const transcript = e.results[0][0].transcript;
-        updateVoiceBubble("⚡", "Processing...");
+        updateVoiceBubble("🧠", "Thinking...");
         handleVoiceInput(transcript);
     };
 
     recognition.onerror = (err) => {
+        console.warn("Speech recognition error:", err.error);
         isListening = false;
         document.querySelectorAll('.mic-btn').forEach(b => b.classList.remove('listening'));
         autoRestartListening();
@@ -1788,14 +1591,14 @@ function autoRestartListening() {
             if (continuousVoiceMode && !isListening && !isSpeaking) {
                 try { recognition.start(); } catch (e) {}
             }
-        }, 1200);
+        }, 1000);
     }
 }
 
 function toggleVoiceAssistant() {
     if (!recognition) initVoiceAssistant();
     if (!recognition) {
-        alert("Voice assistant is not supported on this browser.");
+        alert("Voice assistant is not supported on this device/browser.");
         return;
     }
 
@@ -1805,7 +1608,7 @@ function toggleVoiceAssistant() {
         continuousVoiceMode = true;
         try {
             recognition.start();
-            speak("Where would you like to go?");
+            speak("I'm listening. Where would you like to park?");
         } catch (e) {}
     }
 }
@@ -1822,11 +1625,10 @@ function speak(text) {
     if (!('speechSynthesis' in window) || aiMemory.isMuted) return;
     window.speechSynthesis.cancel();
     isSpeaking = true;
-    updateVoiceBubble("🔊", "Speaking...");
+    updateVoiceBubble("🗣", "Speaking...");
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.98;
-    utterance.lang = 'en-GB';
+    utterance.rate = 1.0;
 
     utterance.onend = () => {
         isSpeaking = false;
@@ -1856,6 +1658,7 @@ function hideVoiceBubble() {
     document.getElementById("voice-status-bubble").classList.remove("show");
 }
 
+/* HANDS-FREE VOICE COMMAND PROCESSOR */
 async function handleVoiceInput(transcript) {
     const parsed = aiParser.parse(transcript);
 
@@ -1879,143 +1682,383 @@ async function handleVoiceInput(transcript) {
             speak("Voice unmuted.");
             break;
 
+        case 'REPEAT_INSTRUCTION':
+            speak(document.getElementById('rs-main-text').textContent || "Continuing on route.");
+            break;
+
+        case 'GET_ETA':
+            const time = document.getElementById('nav-car-time').textContent || "10 mins";
+            const dist = document.getElementById('nav-car-dist').textContent || "2 miles";
+            speak(`Estimated time of arrival is in ${time}, distance ${dist}.`);
+            break;
+
+        case 'AMENITY_SEARCH':
+            speak(`Searching for nearby ${parsed.query}.`);
+            quickSearch(parsed.query);
+            break;
+
+        case 'GO_FAVORITE':
+            speak(`Navigating to ${parsed.name}.`);
+            quickNavFav(parsed.name);
+            break;
+
         case 'CONFIRM_NAV':
-            if (selectedParkingCoords) {
-                speak("Starting navigation to parking.");
-                startRoutingToCoords(selectedParkingCoords, selectedParkingName);
+            if (aiMemory.searchResults.length > 0) {
+                const target = aiMemory.searchResults[aiMemory.currentIndex];
+                speak(`Starting navigation to ${target.name}.`);
+                startRoutingToCoords(target.coords, target.name);
                 setTimeout(() => {
                     document.getElementById("nav-go-btn").click();
-                }, 800);
+                }, 1000);
             } else {
                 speak("Please tell me where you'd like to go first.");
             }
             break;
 
+        case 'DECLINE_NAV':
+            speak("Search cancelled.");
+            document.getElementById("parking-card").classList.remove("show");
+            break;
+
+        case 'SHOW_NEXT':
+            if (aiMemory.searchResults.length > 1) {
+                aiMemory.currentIndex = (aiMemory.currentIndex + 1) % aiMemory.searchResults.length;
+                announceSelectedParkingOption();
+            } else {
+                speak("No other parking options available in this area.");
+            }
+            break;
+
         case 'PARKING_SEARCH':
-            await processFullParkingPipeline(parsed.destinationQuery, parsed.requestedType);
+            updateVoiceBubble("🛰", "Searching...");
+            await executeIntelligentParkingSearch(parsed.query, parsed.type);
             break;
 
         default:
-            speak("I heard " + transcript + ". Try asking: find free parking near Wembley Stadium or CT16 2QZ.");
+            speak("I heard " + transcript + ". You can ask me to find free parking near any destination.");
             break;
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/*                            CORE MAP & UI SYSTEM                            */
-/* -------------------------------------------------------------------------- */
+/* INTELLIGENT EXPANDING CIRCLE PARKING SEARCH ENGINE */
+async function executeIntelligentParkingSearch(destinationQuery, requestedType = 'any') {
+    aiMemory.requestedType = requestedType;
+    let targetDestCoords = playerCoords || [ -0.1276, 51.5072 ];
+    let destName = destinationQuery;
 
-function classifyParking(tags) {
-    if (tags.highway === 'construction' || tags.barrier === 'road_works' || tags.roadwork === 'yes') return "roadwork";
-    if (tags.amenity === "charging_station") return "ev";
-    if (tags['parking:lane:both'] === 'no_parking' || tags['restriction'] === 'no_parking') return "restricted";
-    if (tags.hgv === "designated" || tags.hgv === "yes" || tags.amenity === "truck_parking") return "hgv";
-    if (tags.fee === "yes" || tags['parking:lane:both'] === 'paid') return "paid";
-    if (tags.maxstay || tags['parking:condition:both'] === 'timed') return "timed";
-    if (["motorway", "trunk", "primary"].includes(tags.highway) || tags.access === 'private') return "restricted";
-    return "free";
+    if (destinationQuery && destinationQuery !== 'Current Location') {
+        const geocoded = await fetchPlaces(destinationQuery);
+        if (geocoded && geocoded.length > 0) {
+            const bestGeo = geocoded[0];
+            targetDestCoords = bestGeo._centerCoords || bestGeo.center;
+            destName = bestGeo.text || bestGeo.place_name;
+        } else {
+            speak(`Sorry, I couldn't find the location ${destinationQuery}.`);
+            return;
+        }
+    }
+
+    aiMemory.lastDestinationName = destName;
+    aiMemory.lastDestinationCoords = targetDestCoords;
+    jumpToLocation(targetDestCoords);
+
+    updateVoiceBubble("🅿", "Finding Parking...");
+
+    // Expanding Radius Search Circles (250m -> 500m -> 750m -> 1000m -> 2000m)
+    const searchRadii = [ 250, 500, 750, 1000, 2000 ];
+    let foundCandidates = [];
+
+    for (let radius of searchRadii) {
+        const rawFeatures = await fetchOverpassParkingAtCoords(targetDestCoords, radius);
+        foundCandidates = rankAndFilterParkingOptions(rawFeatures, targetDestCoords, requestedType);
+        if (foundCandidates.length > 0) break;
+    }
+
+    if (foundCandidates.length === 0) {
+        if (requestedType === 'free') {
+            speak(`There is no unrestricted free parking within one mile of ${destName}. The closest option is paid parking. Would you like me to take you there instead?`);
+            // Fallback search to paid parking
+            return executeIntelligentParkingSearch(destinationQuery, 'paid');
+        } else {
+            speak(`I couldn't find suitable parking near ${destName}.`);
+        }
+        return;
+    }
+
+    aiMemory.searchResults = foundCandidates;
+    aiMemory.currentIndex = 0;
+    announceSelectedParkingOption();
 }
 
-function formatRoadName(tags) {
-    if (tags.name) return tags.name;
-    if (tags.ref) return tags.ref;
-    if (tags.highway) return tags.highway.charAt(0).toUpperCase() + tags.highway.slice(1).replace('_', ' ') + " Road";
-    return "Street Parking";
+function rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType) {
+    if (!rawFeatures) return [];
+    const destPt = turf.point(destCoords);
+
+    let candidates = rawFeatures.map(feat => {
+        let centerCoords = null;
+        if (feat.geometry.type === "Point") centerCoords = feat.geometry.coordinates;
+        else if (feat.geometry.type === "LineString") centerCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+        else if (feat.geometry.type === "Polygon") centerCoords = feat.geometry.coordinates[0][0];
+
+        const straightDist = calculateDistanceMiles(destCoords, centerCoords);
+        const walkTimeMins = Math.max(1, Math.round((straightDist * 1609.34) / 80)); // 80m/min avg walk
+
+        // Smart Ranking Score Calculation
+        let rankScore = 100 - (straightDist * 30);
+        const status = feat.properties.status;
+
+        if (status === 'free') rankScore += 25;
+        if (status === 'paid') rankScore += (requestedType === 'paid' ? 20 : 0);
+        if (status === 'restricted') rankScore -= 60;
+        if (status === 'roadwork') rankScore -= 80;
+
+        return {
+            feat,
+            coords: centerCoords,
+            name: feat.properties.name || "Street Parking",
+            status: status,
+            distMiles: straightDist,
+            walkTimeMins: walkTimeMins,
+            score: Math.max(10, Math.min(99, Math.round(rankScore)))
+        };
+    });
+
+    // Filter based on requested intent
+    if (requestedType === 'free') candidates = candidates.filter(c => c.status === 'free');
+    else if (requestedType === 'paid') candidates = candidates.filter(c => c.status === 'paid' || c.status === 'free');
+    else if (requestedType === 'hgv') candidates = candidates.filter(c => c.status === 'hgv');
+
+    // Sort by Best Rank Score & Distance
+    candidates.sort((a, b) => b.score - a.score || a.distMiles - b.distMiles);
+    return candidates;
 }
 
-function showParkingDetails(feat, coords, distMeters) {
-    const props = feat.properties || feat;
-    const card = document.getElementById("parking-card");
-    selectedParkingName = props.name || "Road Segment";
-    selectedParkingCoords = coords;
+function announceSelectedParkingOption() {
+    const current = aiMemory.searchResults[aiMemory.currentIndex];
+    if (!current) return;
 
-    document.getElementById("card-title").textContent = selectedParkingName;
-    document.getElementById("card-type").textContent = (props.status || "PARKING").toUpperCase() + " PARKING";
-    document.getElementById("card-dest-dist").textContent = distMeters ? `${distMeters} m` : "-- m";
+    showParkingDetails(current.feat, current.coords);
+    placeDestMarker(current.coords);
 
-    const badge = document.getElementById("card-status-badge");
-    badge.textContent = props.status;
-    badge.style.backgroundColor = COLORS[props.status] || COLORS.free;
-    badge.style.color = "#000";
-
-    document.getElementById("card-maxstay").textContent = props.maxstay || "No Limit";
-    document.getElementById("card-fee").textContent = props.fee || "None";
+    const typeLabel = current.status === 'free' ? "unrestricted free parking" : "parking location";
+    const speechText = `I found the closest ${typeLabel}. ${current.name} is a ${current.walkTimeMins} minute walk from ${aiMemory.lastDestinationName}, approximately ${current.distMiles.toFixed(1)} miles away. Would you like me to navigate there?`;
     
-    card.classList.add("show");
+    speak(speechText);
 }
 
-function placeDestMarker(coords) {
-    if (!map) return;
-    if (!destMarker) {
-        const el = document.createElement('div');
-        el.className = 'dest-pin';
-        destMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords).addTo(map);
-    } else {
-        destMarker.setLngLat(coords);
-    }
-}
+/* OVERPASS API DIRECT PARKING SEARCH */
+async function fetchOverpassParkingAtCoords(center, radiusMeters) {
+    const query = `[out:json][timeout:10];(way(around:${radiusMeters},${center[1]},${center[0]})[highway];way(around:${radiusMeters},${center[1]},${center[0]})[amenity=parking];);out geom tags;`;
+    const endpoint = "https://overpass-api.de/api/interpreter";
 
-async function fetchPlaces(query) {
-    let postcode = formatUKPostcode(query);
-    if (postcode) {
-        let geo = await geocodeDestination(postcode);
-        if (geo) return [{ text: geo.name, place_name: geo.full_name, center: geo.coords, _distMiles: 0 }];
-    }
-
-    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
     try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${origin[0]},${origin[1]}&country=gb&limit=6`;
-        const res = await fetch(url);
+        const res = await fetch(endpoint, { method: "POST", body: "data=" + encodeURIComponent(query) });
+        if (!res.ok) return [];
         const data = await res.json();
-        return (data.features || []).map(f => ({
-            text: f.text,
-            place_name: f.place_name,
-            center: f.center,
-            _distMiles: calculateDistanceMiles(origin, f.center)
-        }));
+        
+        let results = [];
+        data.elements.forEach(el => {
+            const tags = el.tags || {};
+            const status = classifyParking(tags);
+            if (status === 'restricted') return; // Skip illegal
+
+            if (el.geometry && el.geometry.length >= 2) {
+                results.push({
+                    type: "Feature",
+                    properties: {
+                        status: status,
+                        name: formatRoadName(tags),
+                        maxstay: tags.maxstay || "No Limit",
+                        fee: tags.fee || "None"
+                    },
+                    geometry: { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) }
+                });
+            }
+        });
+        return results;
     } catch (e) {
         return [];
     }
 }
 
+/* HAVERSINE DISTANCE MATH (MILES) */
 function calculateDistanceMiles(coord1, coord2) {
-    if (!coord1 || !coord2) return 999;
-    return turf.distance(turf.point(coord1), turf.point(coord2), { units: 'miles' });
+    if (!coord1 || !coord2) return 9999;
+    const R = 3958.8;
+    const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+    const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
 }
 
-function jumpToLocation(coords) {
-    document.getElementById("home").classList.add("hidden");
-    document.getElementById("ui").classList.add("visible");
-    if (!map) {
-        initMap(coords);
+/* AI PARKING SCORE CALCULATOR (0-100) */
+function calculateParkingScore(feat) {
+    let score = 70;
+    const props = feat.properties || feat;
+    const status = props.status;
+    const dist = feat._distMiles || 0.5;
+
+    if (status === 'free') score += 25;
+    if (status === 'paid') score += 5;
+    if (status === 'timed') score += 10;
+    if (status === 'restricted') score -= 30;
+
+    if (dist < 0.2) score += 10;
+    else if (dist > 1.0) score -= 15;
+
+    score = Math.max(10, Math.min(99, score));
+    const starCount = Math.round(score / 20);
+    const stars = "★".repeat(starCount) + "☆".repeat(5 - starCount);
+    return `${stars} ${score} / 100`;
+}
+
+/* VISIBILITY HELPER */
+function setParkingLayersVisibility(visible) {
+    if (!map) return;
+    const visibility = visible ? 'visible' : 'none';
+    
+    Object.keys(COLORS).forEach(status => {
+        const layerId = `layer-${status}`;
+        if (map.getLayer(layerId)) {
+            map.setLayoutProperty(layerId, 'visibility', visibility);
+        }
+    });
+
+    if (map.getLayer('layer-roadwork-dash')) {
+        map.setLayoutProperty('layer-roadwork-dash', 'visibility', visibility);
+    }
+
+    if (map.getLayer('lots-fill')) {
+        map.setLayoutProperty('lots-fill', 'visibility', visibility);
+    }
+
+    roadworkMarkers.forEach(m => {
+        const el = m.getElement();
+        if (el) el.style.display = visible ? 'flex' : 'none';
+    });
+}
+
+/* DYNAMIC PLAYER MARKER */
+function buildDotMarkerEl() {
+    const wrap = document.createElement('div');
+    wrap.className = 'player-marker';
+    wrap.id = 'player-marker-inner';
+    wrap.innerHTML = `<div class="player-pulse"></div><div class="player-dot"></div>`;
+    return wrap;
+}
+
+function buildArrowMarkerEl() {
+    const wrap = document.createElement('div');
+    wrap.className = 'satnav-arrow-wrapper';
+    wrap.id = 'player-marker-inner';
+    wrap.innerHTML = `<div class="satnav-arrow"></div>`;
+    return wrap;
+}
+
+function updateMarkerElement() {
+    if (!map || !playerCoords) return;
+    
+    if (playerMarker) {
+        playerMarker.remove();
+        playerMarker = null;
+    }
+
+    const el = navActive ? buildArrowMarkerEl() : buildDotMarkerEl();
+    playerMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat(playerCoords)
+        .addTo(map);
+}
+
+function placePlayerMarker(coords, heading = 0) {
+    if (!map) return;
+    playerCoords = coords;
+
+    if (!playerMarker) {
+        updateMarkerElement();
     } else {
-        map.flyTo({ center: coords, zoom: 16.5, essential: true });
-        debouncedUpdateParkingData();
+        playerMarker.setLngLat(coords);
+    }
+
+    const innerEl = document.getElementById('player-marker-inner');
+    if (innerEl && navActive) {
+        innerEl.style.transform = `rotate(${heading}deg)`;
     }
 }
 
-async function startRoutingToCoords(coords, name) {
-    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
-    placeDestMarker(coords);
-    document.getElementById('nav-dest-name').textContent = name;
-    
-    document.getElementById("loader").classList.add("show");
-    const routeRes = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${coords[0]},${coords[1]}?geometries=geojson&overview=full&access_token=${TOKEN}`);
-    const routeData = await routeRes.json();
-    document.getElementById("loader").classList.remove("show");
+/* ROUTE SNAPPING */
+function processSnapToRoute(rawCoords, deviceHeading) {
+    if (!navActive || !activeRouteGeoJSON || !window.turf) {
+        return { snappedCoords: rawCoords, heading: deviceHeading };
+    }
 
-    if (routeData.routes && routeData.routes.length > 0) {
-        const route = routeData.routes[0];
-        drawRoute(route.geometry);
-        document.getElementById('nav-car-dist').textContent = (route.distance * 0.000621371).toFixed(1) + " mi";
-        document.getElementById('nav-car-time').textContent = Math.round(route.duration / 60) + " mins";
-        document.getElementById('nav-walk-time').textContent = Math.round(route.duration / 300) + " mins";
+    try {
+        const rawPt = turf.point(rawCoords);
+        const routeLine = turf.lineString(activeRouteGeoJSON.coordinates);
 
-        const bounds = new mapboxgl.LngLatBounds().extend(origin).extend(coords);
-        map.fitBounds(bounds, { padding: 80 });
+        const snapped = turf.nearestPointOnLine(routeLine, rawPt);
+        const snappedCoords = snapped.geometry.coordinates;
 
-        document.getElementById('parking-card').classList.remove('show');
-        document.getElementById('nav-panel').classList.add('show');
+        const distanceAlong = snapped.properties.location; 
+        const aheadPt = turf.along(routeLine, distanceAlong + 0.015, { units: 'kilometers' });
+        
+        let calculatedHeading = turf.bearing(snapped, aheadPt);
+        if (calculatedHeading < 0) calculatedHeading += 360;
+
+        // SMART ARRIVAL MODE DETECTOR (Trigger within 300 meters)
+        const distToDest = destCoords ? calculateDistanceMiles(snappedCoords, destCoords) : 999;
+        if (distToDest < 0.2 && !aiMemory.smartArrivalTriggered) {
+            aiMemory.smartArrivalTriggered = true;
+            speak("You are approaching your destination. Scanning for live available parking.");
+            executeIntelligentParkingSearch("Current Location", aiMemory.requestedType);
+        }
+
+        return {
+            snappedCoords: snappedCoords,
+            heading: calculatedHeading
+        };
+    } catch (err) {
+        return { snappedCoords: rawCoords, heading: deviceHeading };
+    }
+}
+
+/* DESTINATION MARKER */
+function placeDestMarker(coords) {
+    if (!map) return;
+    destCoords = coords;
+    if (!destMarker) {
+        const el = document.createElement('div');
+        el.className = 'dest-pin';
+        destMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+            .setLngLat(coords)
+            .addTo(map);
+    } else {
+        destMarker.setLngLat(coords);
+    }
+}
+
+function removeDestMarker() {
+    if (destMarker) { destMarker.remove(); destMarker = null; }
+    destCoords = null;
+}
+
+/* ROUTING API & DRAWING */
+async function fetchRoute(from, to) {
+    const coords = `${from[0]},${from[1]};${to[0]},${to[1]}`;
+    const profile = hgvModeActive ? 'driving' : 'driving';
+    const params = `geometries=geojson&overview=full&access_token=${TOKEN}`;
+    try {
+        const [walkRes, driveRes] = await Promise.all([
+            fetch(`https://api.mapbox.com/directions/v5/mapbox/walking/${coords}?${params}`),
+            fetch(`https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}?${params}`)
+        ]);
+        const [walkData, driveData] = await Promise.all([walkRes.json(), driveRes.json()]);
+        return { walk: walkData.routes?.[0] || null, drive: driveData.routes?.[0] || null };
+    } catch (e) {
+        console.error("Routing failed", e);
+        return { walk: null, drive: null };
     }
 }
 
@@ -2028,8 +2071,18 @@ function drawRoute(geojsonGeom) {
         map.getSource('route').setData(data);
     } else {
         map.addSource('route', { type: 'geojson', data });
-        map.addLayer({ id: 'route-bg', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0284c7', 'line-width': 12, 'line-opacity': 0.7 } });
-        map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#38bdf8', 'line-width': 7, 'line-opacity': 1.0 } });
+
+        map.addLayer({
+            id: 'route-bg', type: 'line', source: 'route',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#0284c7', 'line-width': 12, 'line-opacity': 0.7 }
+        });
+
+        map.addLayer({
+            id: 'route-line', type: 'line', source: 'route',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#38bdf8', 'line-width': 7, 'line-opacity': 1.0 }
+        });
     }
 }
 
@@ -2040,60 +2093,439 @@ function clearRoute() {
     if (map.getSource('route')) map.removeSource('route');
 }
 
-function stopNavigation() {
-    navActive = false;
-    clearRoute();
-    document.getElementById('route-status').classList.remove('show');
-    document.getElementById('top-bar').classList.remove('hidden-bar');
-    if (map) map.easeTo({ pitch: 0, bearing: 0 });
+/* SEARCH & POIs */
+async function fetchPlaces(query) {
+    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
+    const prox = `${origin[0]},${origin[1]}`;
+
+    try {
+        const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${prox}&country=gb&types=poi,address,neighborhood,locality,postcode&autocomplete=true&limit=10`;
+        const res = await fetch(geocodeUrl);
+        const data = await res.json();
+        let features = data.features || [];
+
+        features.forEach(f => {
+            const center = f.center || (f.geometry ? f.geometry.coordinates : null);
+            f._centerCoords = center;
+            f._distMiles = center ? calculateDistanceMiles(origin, center) : 99999;
+        });
+
+        const isNamedSearch = query.length > 3 && !query.toLowerCase().startsWith("tesco");
+        if (!isNamedSearch) {
+            features.sort((a, b) => a._distMiles - b._distMiles);
+        }
+
+        return features;
+    } catch (e) {
+        console.error("Geocoding search failed", e);
+        return [];
+    }
 }
 
-function locateMe() {
-    navigator.geolocation.getCurrentPosition(pos => {
-        const coords = [pos.coords.longitude, pos.coords.latitude];
-        playerCoords = coords;
-        jumpToLocation(coords);
-    }, () => {
-        alert("Please enable Location permissions.");
+function hideDropdowns() {
+    ['dest-dropdown', 'map-dropdown'].forEach(id => {
+        const d = document.getElementById(id);
+        if (d) { d.classList.remove('show'); d.innerHTML = ''; }
     });
 }
 
-function quickSearch(query) {
-    document.getElementById("home-input").value = query;
-    processFullParkingPipeline(query, 'any');
+async function renderDropdown(dropdownId, inputId, query) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!query.trim()) {
+        dropdown.classList.remove('show');
+        return;
+    }
+
+    const features = await fetchPlaces(query);
+    if (!features.length) {
+        dropdown.classList.remove('show');
+        return;
+    }
+
+    dropdown.innerHTML = '';
+    features.forEach(feat => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        
+        const titleRow = document.createElement('div');
+        titleRow.className = 'dropdown-title-row';
+
+        const title = document.createElement('span');
+        title.className = 'dropdown-title';
+        title.textContent = feat.text || feat.place_name;
+
+        const distTag = document.createElement('span');
+        distTag.className = 'dropdown-distance';
+        
+        if (feat._distMiles < 0.1) {
+            distTag.textContent = `${Math.round(feat._distMiles * 1760)} yd`;
+        } else if (feat._distMiles < 999) {
+            distTag.textContent = `${feat._distMiles.toFixed(1)} mi`;
+        }
+
+        titleRow.appendChild(title);
+        if (distTag.textContent) titleRow.appendChild(distTag);
+
+        const sub = document.createElement('span');
+        sub.className = 'dropdown-subtitle';
+        sub.textContent = feat.place_name;
+
+        item.appendChild(titleRow);
+        item.appendChild(sub);
+
+        item.addEventListener('click', () => {
+            document.getElementById(inputId).value = feat.text || feat.place_name;
+            hideDropdowns();
+            
+            const targetCoords = feat._centerCoords || feat.center;
+            if (dropdownId === 'dest-dropdown') {
+                startRoutingToCoords(targetCoords, feat.text || feat.place_name);
+            } else {
+                jumpToLocation(targetCoords);
+            }
+        });
+
+        dropdown.appendChild(item);
+    });
+
+    dropdown.classList.add('show');
 }
 
-function quickNavFav(type) {
-    document.getElementById("favs-modal").classList.remove("show");
-    speak(`Navigating to ${type}.`);
+function jumpToLocation(coords) {
+    if (!coords || coords.length < 2) return;
+
+    document.getElementById("home").classList.add("hidden");
+    document.getElementById("ui").classList.add("visible");
+    
+    if (!map) {
+        initMap(coords);
+    } else {
+        map.flyTo({ 
+            center: coords, 
+            zoom: 16.5, 
+            pitch: 0,
+            essential: true 
+        });
+        setTimeout(debouncedUpdateParkingData, 400);
+    }
 }
 
+async function startRoutingToCoords(coords, name) {
+    const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
+
+    placeDestMarker(coords);
+    document.getElementById('nav-dest-name').textContent = name;
+    
+    document.getElementById("loader").classList.add("show");
+    const routes = await fetchRoute(origin, coords);
+    document.getElementById("loader").classList.remove("show");
+
+    if (routes.drive || routes.walk) {
+        const driveRoute = routes.drive;
+        const walkRoute = routes.walk;
+        
+        if (driveRoute) {
+            drawRoute(driveRoute.geometry);
+            const miles = (driveRoute.distance * 0.000621371).toFixed(1);
+            document.getElementById('nav-car-dist').textContent = miles + " mi";
+            document.getElementById('nav-car-time').textContent = Math.round(driveRoute.duration / 60) + " mins";
+        }
+        if (walkRoute) {
+            document.getElementById('nav-walk-time').textContent = Math.round(walkRoute.duration / 60) + " mins";
+        }
+
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend(origin);
+        bounds.extend(coords);
+        map.fitBounds(bounds, { padding: 80 });
+
+        document.getElementById('parking-card').classList.remove('show');
+        document.getElementById('nav-panel').classList.add('show');
+        document.getElementById('dest-bar').classList.remove('show');
+    } else {
+        alert("Unable to calculate route.");
+    }
+}
+
+/* PARKING & ROAD WORK CLASSIFICATION */
+function classifyParking(tags) {
+    if (
+        tags.highway === 'construction' || 
+        tags.construction || 
+        tags.barrier === 'road_works' ||
+        tags.roadwork === 'yes' ||
+        tags['work:type']
+    ) return "roadwork";
+
+    if (tags.amenity === "charging_station") return "ev";
+
+    const hasYellowLines = 
+        tags['parking:lane:both'] === 'no_parking' || 
+        tags['parking:lane:left'] === 'no_parking' || 
+        tags['parking:lane:right'] === 'no_parking' ||
+        tags['parking:condition:both'] === 'no_parking' ||
+        tags['restriction'] === 'no_parking' ||
+        tags['waiting_restrictions'] === 'yes';
+
+    if (
+        tags.hgv === "designated" || tags.hgv === "yes" ||
+        tags.truck === "yes" || tags["parking:hgv"] === "yes" ||
+        tags["parking:hgv"] === "designated" || tags["hgv:parking"] === "yes" ||
+        tags.amenity === "truck_parking"
+    ) return "hgv";
+
+    if (hasYellowLines) return "restricted";
+    if (tags.fee === "yes" || tags['parking:lane:both'] === 'paid') return "paid";
+    if (tags.maxstay || tags['parking:condition:both'] === 'timed') return "timed";
+    if (["motorway", "trunk", "primary"].includes(tags.highway) || tags.access === 'private' || tags.parking === 'private') return "restricted";
+    return "free";
+}
+
+function formatRoadName(tags) {
+    if (tags.name) return tags.name;
+    if (tags.ref) return tags.ref;
+    if (tags.highway) {
+        return tags.highway.charAt(0).toUpperCase() + tags.highway.slice(1).replace('_', ' ') + " Road";
+    }
+    return "Street Parking";
+}
+
+/* SIDE PANEL RENDERER */
+function renderSidePanel() {
+    const panelContent = document.getElementById("side-panel-content");
+    panelContent.innerHTML = "";
+
+    if (!cachedParkingFeatures || cachedParkingFeatures.length === 0) {
+        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found.</div>`;
+        return;
+    }
+
+    let filtered = cachedParkingFeatures;
+    if (activeFilter !== "all") {
+        filtered = cachedParkingFeatures.filter(f => f.properties.status === activeFilter);
+    }
+
+    if (filtered.length === 0) {
+        panelContent.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
+        return;
+    }
+
+    filtered.sort((a, b) => a._distMiles - b._distMiles);
+    const topFeatures = filtered.slice(0, 15);
+
+    topFeatures.forEach(feat => {
+        const props = feat.properties;
+        const status = props.status;
+        const color = COLORS[status] || COLORS.free;
+
+        const card = document.createElement("div");
+        card.className = "parking-item-card";
+
+        let distLabel = feat._distMiles < 0.1 ? 
+            `${Math.round(feat._distMiles * 1760)} yd` : 
+            `${feat._distMiles.toFixed(2)} mi`;
+
+        card.innerHTML = `
+            <div class="item-top">
+                <span class="item-title">${props.name}</span>
+                <span class="item-dist">${distLabel}</span>
+            </div>
+            <div class="item-bottom">
+                <span class="item-badge" style="background:${color}"></span>
+                <span>${status.toUpperCase()}</span>
+            </div>
+        `;
+
+        card.addEventListener("click", () => {
+            let flyCoords = null;
+            if (feat.geometry && feat.geometry.coordinates) {
+                if (feat.geometry.type === "Point") flyCoords = feat.geometry.coordinates;
+                else if (feat.geometry.type === "LineString") flyCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+                else if (feat.geometry.type === "Polygon") flyCoords = feat.geometry.coordinates[0][0];
+            }
+
+            showParkingDetails(feat, flyCoords);
+
+            if (flyCoords && map) {
+                map.flyTo({ center: flyCoords, zoom: 17 });
+            }
+        });
+
+        panelContent.appendChild(card);
+    });
+}
+
+/* ROADWORK BADGES */
+function clearRoadworkMarkers() {
+    roadworkMarkers.forEach(m => m.remove());
+    roadworkMarkers = [];
+}
+
+function renderRoadworkBadges(roadworkFeatures) {
+    clearRoadworkMarkers();
+    if (!map || navActive) return;
+
+    roadworkFeatures.forEach(feat => {
+        let centerCoords = null;
+        if (feat.geometry.type === "LineString" && feat.geometry.coordinates.length) {
+            centerCoords = feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length / 2)];
+        }
+
+        if (!centerCoords) return;
+
+        const el = document.createElement('div');
+        el.className = 'roadwork-marker-badge';
+        el.title = feat.properties.name + " - Live Roadwork";
+        el.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+        `;
+
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showParkingDetails(feat, centerCoords);
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+            .setLngLat(centerCoords)
+            .addTo(map);
+
+        roadworkMarkers.push(marker);
+    });
+}
+
+/* OPTIMIZED OVERPASS DATA FETCHING */
 function debouncedUpdateParkingData() {
     clearTimeout(fetchDebounceTimeout);
-    fetchDebounceTimeout = setTimeout(updateParkingData, 300);
+    fetchDebounceTimeout = setTimeout(updateParkingData, 200);
 }
 
 async function updateParkingData() {
     if (!map || navActive) return;
-    if (map.getZoom() < 11) return;
+    const zoom = map.getZoom();
+    if (zoom < 11) return; 
+
     const center = map.getCenter();
     const currentCenter = [center.lng, center.lat];
 
-    if (lastFetchedCenter && calculateDistanceMiles(lastFetchedCenter, currentCenter) < 0.2) return;
-    lastFetchedCenter = currentCenter;
-
-    let res = await fetchParkingAroundDestination(currentCenter, 'any');
-    if (res.results && res.results.length > 0) {
-        cachedParkingFeatures = res.results.map(r => r.feature);
-        const roads = cachedParkingFeatures.filter(f => f.geometry.type === 'LineString');
-        const lots = cachedParkingFeatures.filter(f => f.geometry.type === 'Polygon');
-
-        if (map.getSource("overpass")) map.getSource("overpass").setData({ type: "FeatureCollection", features: roads });
-        if (map.getSource("parking-lots")) map.getSource("parking-lots").setData({ type: "FeatureCollection", features: lots });
+    if (lastFetchedCenter && calculateDistanceMiles(lastFetchedCenter, currentCenter) < 0.25) {
+        return;
     }
+
+    lastFetchedCenter = currentCenter;
+    const originPoint = playerCoords || currentCenter;
+    document.getElementById("loader").classList.add("show");
+
+    const radius = zoom > 14 ? 1200 : 2200;
+    const query = `[out:json][timeout:10];(way(around:${radius},${center.lat},${center.lng})[highway];way(around:${radius},${center.lat},${center.lng})[highway=construction];way(around:${radius},${center.lat},${center.lng})[barrier=road_works];way(around:${radius},${center.lat},${center.lng})[amenity=parking];node(around:${radius},${center.lat},${center.lng})[amenity=charging_station];);out geom tags;`;
+
+    const endpoints = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.k33g.org/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+    ];
+
+    let data = null;
+    for (let endpoint of endpoints) {
+        try {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(endpoint, { 
+                method: "POST", 
+                body: "data=" + encodeURIComponent(query),
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            if (res.ok) {
+                data = await res.json();
+                break;
+            }
+        } catch (err) {
+            console.warn(`Endpoint ${endpoint} timed out or failed.`);
+        }
+    }
+
+    if (data && data.elements) {
+        const roads = [], lots = [], roadworks = [];
+        cachedParkingFeatures = [];
+        const pt = turf.point(originPoint);
+
+        data.elements.forEach(el => {
+            const tags = el.tags || {};
+            const status = classifyParking(tags);
+            const roadName = status === 'roadwork' ? (tags.name || 'Road Construction Work') : formatRoadName(tags);
+
+            let feat = null;
+
+            if (tags.amenity === "parking" && el.geometry?.length > 2) {
+                feat = { 
+                    type: "Feature", 
+                    properties: { status, maxstay: tags.maxstay || 'N/A', fee: tags.fee || 'Unknown', name: tags.name || 'Off-Street Parking Lot' }, 
+                    geometry: { type: "Polygon", coordinates: [el.geometry.map(p => [p.lon, p.lat])] }
+                };
+                lots.push(feat);
+            } else if (el.geometry?.length >= 2) {
+                feat = { 
+                    type: "Feature", 
+                    properties: { 
+                        status, 
+                        maxstay: status === 'roadwork' ? 'Roadwork Active' : (tags.maxstay || 'N/A'), 
+                        fee: status === 'roadwork' ? 'N/A' : (tags.fee || 'None'), 
+                        name: roadName 
+                    }, 
+                    geometry: { type: "LineString", coordinates: el.geometry.map(p => [p.lon, p.lat]) } 
+                };
+
+                if (status === 'roadwork') {
+                    roadworks.push(feat);
+                } else {
+                    roads.push(feat);
+                }
+            }
+
+            if (feat && window.turf) {
+                try {
+                    let dist = 999;
+                    if (feat.geometry.type === "LineString") {
+                        dist = turf.pointToLineDistance(pt, feat, { units: 'miles' });
+                    } else if (feat.geometry.type === "Polygon") {
+                        const polyCenter = turf.centerOfMass(feat);
+                        dist = calculateDistanceMiles(originPoint, polyCenter.geometry.coordinates);
+                    }
+                    feat._distMiles = dist;
+                    cachedParkingFeatures.push(feat);
+                } catch (err) {
+                    feat._distMiles = 999;
+                }
+            }
+        });
+
+        if (map.getSource("overpass")) {
+            map.getSource("overpass").setData({ type: "FeatureCollection", features: roads });
+        }
+        if (map.getSource("roadworks")) {
+            map.getSource("roadworks").setData({ type: "FeatureCollection", features: roadworks });
+        }
+        if (map.getSource("parking-lots")) {
+            map.getSource("parking-lots").setData({ type: "FeatureCollection", features: lots });
+        }
+
+        renderRoadworkBadges(roadworks);
+        renderSidePanel();
+    }
+
+    document.getElementById("loader").classList.remove("show");
 }
 
+/* INITIALIZE MAP */
 function initMap(center) {
+    if (map) { 
+        map.flyTo({ center: center, zoom: 16, essential: true });
+        debouncedUpdateParkingData();
+        return; 
+    }
+    
     map = new mapboxgl.Map({
         container: "map",
         style: "mapbox://styles/mapbox/dark-v11",
@@ -2101,63 +2533,390 @@ function initMap(center) {
         zoom: 16,
         attributionControl: false
     });
-
+    
     map.on("load", () => {
-        map.addSource("overpass", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
-        map.addSource("parking-lots", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        const layers = map.getStyle().layers;
+        let labelLayerId;
+        for (let i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout && layers[i].layout['text-field']) {
+                labelLayerId = layers[i].id;
+                break;
+            }
+        }
 
-        map.addLayer({ id: "lots-fill", type: "fill", source: "parking-lots", paint: { "fill-color": ["match", ["get", "status"], "free", COLORS.free, "paid", COLORS.paid, COLORS.restricted], "fill-opacity": 0.45 } });
+        if (map.getSource('mapbox-traffic')) {
+            map.addLayer({
+                'id': 'live-traffic',
+                'type': 'line',
+                'source': 'mapbox-traffic',
+                'source-layer': 'traffic',
+                'paint': {
+                    'line-width': 2.5,
+                    'line-color': [
+                        'case',
+                        ['==', ['get', 'congestion'], 'low'], '#22c55e',
+                        ['==', ['get', 'congestion'], 'moderate'], '#facc15',
+                        ['==', ['get', 'congestion'], 'heavy'], '#f97316',
+                        ['==', ['get', 'congestion'], 'severe'], '#ef4444',
+                        '#000000'
+                    ]
+                }
+            }, labelLayerId);
+        }
+
+        map.addSource("overpass", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        map.addSource("roadworks", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        map.addSource("parking-lots", { type: "geojson", data: {type:"FeatureCollection", features:[]} });
+        
+        map.addLayer({ 
+            id: "lots-fill", 
+            type: "fill", 
+            source: "parking-lots", 
+            paint: { 
+                "fill-color": ["match", ["get", "status"], "free", COLORS.free, "paid", COLORS.paid, "timed", COLORS.timed, "hgv", COLORS.hgv, COLORS.restricted], 
+                "fill-opacity": 0.45 
+            } 
+        }, labelLayerId);
 
         Object.entries(COLORS).forEach(([status, color]) => {
-            map.addLayer({ id: `layer-${status}`, type: "line", source: "overpass", filter: ["==", ["get", "status"], status], layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": color, "line-width": 8, "line-opacity": 0.95 } });
+            if (status === 'roadwork') return;
+            map.addLayer({ 
+                id: `layer-${status}`, 
+                type: "line", 
+                source: "overpass", 
+                filter: ["==", ["get", "status"], status], 
+                layout: {
+                    "line-cap": "round",
+                    "line-join": "round"
+                },
+                paint: { 
+                    "line-color": color, 
+                    "line-width": 8, 
+                    "line-opacity": 0.95 
+                } 
+            }, labelLayerId);
         });
 
+        map.addLayer({
+            id: 'layer-roadwork-base',
+            type: 'line',
+            source: 'roadworks',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+                'line-color': '#ea580c',
+                'line-width': 10,
+                'line-opacity': 0.85
+            }
+        }, labelLayerId);
+
+        map.addLayer({
+            id: 'layer-roadwork-dash',
+            type: 'line',
+            source: 'roadworks',
+            layout: { 'line-cap': 'butt', 'line-join': 'miter' },
+            paint: {
+                'line-color': '#fef08a',
+                'line-width': 6,
+                'line-dasharray': [1, 2]
+            }
+        }, labelLayerId);
+
         map.on("moveend", debouncedUpdateParkingData);
+        
+        map.on("click", (e) => {
+            if (navActive) return;
+            const layersToCheck = [...Object.keys(COLORS).map(s => `layer-${s}`), 'layer-roadwork-base', 'lots-fill'];
+            const features = map.queryRenderedFeatures(e.point, { layers: layersToCheck });
+            if (features.length) {
+                const clickCoords = [e.lngLat.lng, e.lngLat.lat];
+                showParkingDetails(features[0], clickCoords);
+            }
+        });
+
         debouncedUpdateParkingData();
     });
 }
 
+function showParkingDetails(feat, coords) {
+    const props = feat.properties || feat;
+    const card = document.getElementById("parking-card");
+    selectedCardName = props.name || "Road Segment";
+    selectedCardCoords = coords || (map ? map.getCenter().toArray() : null);
+
+    const iconWrap = document.getElementById("card-icon-wrap");
+    if (props.status === 'roadwork') {
+        iconWrap.style.background = "rgba(249, 115, 22, 0.2)";
+        iconWrap.style.borderColor = "rgba(249, 115, 22, 0.5)";
+        iconWrap.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>`;
+    } else {
+        iconWrap.style.background = "rgba(34, 197, 94, 0.2)";
+        iconWrap.style.borderColor = "rgba(34, 197, 94, 0.4)";
+        iconWrap.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="#86efac"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>`;
+    }
+
+    document.getElementById("card-title").textContent = selectedCardName;
+    document.getElementById("card-type").textContent = props.status === 'roadwork' ? "ACTIVE ROADWORK ZONE" : ((props.status || "PARKING").toUpperCase() + " PARKING");
+    document.getElementById("card-score").textContent = calculateParkingScore(feat);
+
+    const badge = document.getElementById("card-status-badge");
+    badge.textContent = props.status;
+    badge.style.backgroundColor = COLORS[props.status] || COLORS.free;
+    badge.style.color = "#000";
+
+    document.getElementById("card-maxstay").textContent = props.maxstay || "No Limit";
+    document.getElementById("card-fee").textContent = props.fee || "None";
+    
+    card.classList.add("show");
+}
+
+/* ACTIONS */
+function locateMe() {
+    navigator.geolocation.getCurrentPosition(pos => {
+        const coords = [pos.coords.longitude, pos.coords.latitude];
+        const heading = pos.coords.heading || 0;
+
+        document.getElementById("home").classList.add("hidden");
+        document.getElementById("ui").classList.add("visible");
+        
+        if (!map) {
+            initMap(coords);
+            map.on('load', () => {
+                placePlayerMarker(coords, heading);
+                startWatching();
+            });
+        } else {
+            map.flyTo({ center: coords, zoom: 16, essential: true });
+            placePlayerMarker(coords, heading);
+            startWatching();
+            debouncedUpdateParkingData();
+        }
+    }, () => {
+        alert("Please enable Location permissions on your device.");
+    });
+}
+
+function startWatching() {
+    if (watchId !== null) return;
+    watchId = navigator.geolocation.watchPosition(pos => {
+        const rawCoords = [pos.coords.longitude, pos.coords.latitude];
+        const rawHeading = pos.coords.heading || currentHeading || 0;
+        
+        const snap = processSnapToRoute(rawCoords, rawHeading);
+        
+        currentHeading = snap.heading;
+        placePlayerMarker(snap.snappedCoords, snap.heading);
+
+        if (navActive && map) {
+            map.easeTo({
+                center: snap.snappedCoords,
+                bearing: snap.heading,
+                pitch: 60,
+                zoom: 18,
+                duration: 800,
+                easing: (t) => t
+            });
+        }
+    }, null, { enableHighAccuracy: true });
+}
+
+async function handleSearch(inputId) {
+    const el = document.getElementById(inputId);
+    const val = el.value.trim();
+    if (!val) return;
+    el.blur();
+    hideDropdowns();
+
+    const features = await fetchPlaces(val);
+    if (features.length) {
+        const targetCoords = features[0]._centerCoords || features[0].center;
+        jumpToLocation(targetCoords);
+    } else {
+        alert("Location not found. Try entering a store name, road name, town, or postcode.");
+    }
+}
+
+function quickSearch(query) {
+    document.getElementById("home-input").value = query;
+    handleSearch("home-input");
+    document.getElementById("sos-modal").classList.remove("show");
+}
+
+function quickNavFav(place) {
+    document.getElementById("favs-modal").classList.remove("show");
+    speak(`Navigating to ${place}`);
+    locateMe();
+}
+
+function stopNavigation() {
+    navActive = false;
+    aiMemory.smartArrivalTriggered = false;
+    updateMarkerElement();
+    
+    document.getElementById("route-status").classList.remove("show");
+    document.getElementById("top-bar").classList.remove("hidden-bar");
+    
+    if (map) {
+        map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+    }
+    
+    setParkingLayersVisibility(true);
+    clearRoute();
+    removeDestMarker();
+    debouncedUpdateParkingData();
+}
+
 /* EVENT LISTENERS */
-document.addEventListener("DOMContentLoaded", () => {
-    initVoiceAssistant();
+document.getElementById("home-btn").addEventListener("click", () => handleSearch("home-input"));
+document.getElementById("map-btn").addEventListener("click", () => handleSearch("map-input"));
+document.getElementById("home-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("home-input"); });
+document.getElementById("map-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("map-input"); });
 
-    // Home Actions
-    document.getElementById("home-btn").addEventListener("click", () => {
-        let q = document.getElementById("home-input").value;
-        if (q) processFullParkingPipeline(q, 'any');
-    });
-
-    document.getElementById("home-mic-btn").addEventListener("click", toggleVoiceAssistant);
-    document.getElementById("map-mic-btn").addEventListener("click", toggleVoiceAssistant);
-    document.getElementById("open-map-btn").addEventListener("click", () => jumpToLocation([-0.1276, 51.5072]));
-    document.getElementById("home-locate-btn").addEventListener("click", locateMe);
-
-    // Map Inputs
-    document.getElementById("map-btn").addEventListener("click", () => {
-        let q = document.getElementById("map-input").value;
-        if (q) processFullParkingPipeline(q, 'any');
-    });
-
-    // Navigation Confirmations
-    document.getElementById("nav-go-btn").addEventListener("click", () => {
-        navActive = true;
-        document.getElementById("nav-panel").classList.remove("show");
-        document.getElementById("route-status").classList.add("show");
-        document.getElementById("top-bar").classList.add("hidden-bar");
-        if (map) map.easeTo({ pitch: 50, zoom: 17.5 });
-    });
-
-    document.getElementById("rs-end-btn").addEventListener("click", stopNavigation);
-    document.getElementById("card-close-btn").addEventListener("click", () => document.getElementById("parking-card").classList.remove("show"));
-    document.getElementById("card-nav-btn").addEventListener("click", () => {
-        if (selectedParkingCoords) startRoutingToCoords(selectedParkingCoords, selectedParkingName);
-    });
-
-    document.getElementById("favs-btn").addEventListener("click", () => document.getElementById("favs-modal").classList.add("show"));
-    document.getElementById("favs-close-btn").addEventListener("click", () => document.getElementById("favs-modal").classList.remove("show"));
-    document.getElementById("sos-btn").addEventListener("click", () => document.getElementById("sos-modal").classList.add("show"));
-    document.getElementById("sos-close-btn").addEventListener("click", () => document.getElementById("sos-modal").classList.remove("show"));
+document.querySelectorAll(".mic-btn").forEach(btn => {
+    btn.addEventListener("click", toggleVoiceAssistant);
 });
+
+document.getElementById("open-map-btn").addEventListener("click", () => {
+    document.getElementById("home").classList.add("hidden");
+    document.getElementById("ui").classList.add("visible");
+    initMap([-0.1276, 51.5072]);
+});
+
+document.getElementById("home-locate-btn").addEventListener("click", locateMe);
+document.getElementById("locate-btn").addEventListener("click", locateMe);
+
+document.getElementById("side-panel-header").addEventListener("click", () => {
+    document.getElementById("parking-side-panel").classList.toggle("collapsed");
+});
+
+document.querySelectorAll(".filter-chip").forEach(chip => {
+    chip.addEventListener("click", (e) => {
+        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+        const target = e.currentTarget;
+        target.classList.add("active");
+        
+        activeFilter = target.getAttribute("data-filter");
+        renderSidePanel();
+    });
+});
+
+document.getElementById("legend-toggle-btn").addEventListener("click", () => {
+    const leg = document.getElementById("legend");
+    leg.classList.toggle("hidden-legend");
+    document.getElementById("legend-toggle-btn").classList.toggle("active");
+});
+
+document.getElementById("hgv-mode-btn").addEventListener("click", () => {
+    hgvModeActive = !hgvModeActive;
+    document.getElementById("hgv-mode-btn").classList.toggle("active", hgvModeActive);
+    speak(hgvModeActive ? "HGV Truck Mode Activated" : "Standard Driver Mode Activated");
+    debouncedUpdateParkingData();
+});
+
+document.getElementById("favs-btn").addEventListener("click", () => {
+    document.getElementById("favs-modal").classList.add("show");
+});
+document.getElementById("favs-close-btn").addEventListener("click", () => {
+    document.getElementById("favs-modal").classList.remove("show");
+});
+
+document.getElementById("sos-btn").addEventListener("click", () => {
+    document.getElementById("sos-modal").classList.add("show");
+});
+document.getElementById("sos-close-btn").addEventListener("click", () => {
+    document.getElementById("sos-modal").classList.remove("show");
+});
+
+document.getElementById("nav-mode-btn").addEventListener("click", () => {
+    navModeOn = !navModeOn;
+    document.getElementById("dest-bar").classList.toggle("show", navModeOn);
+    document.getElementById("nav-mode-btn").classList.toggle("active", navModeOn);
+    
+    if (navModeOn) {
+        document.getElementById("top-bar").classList.add("hidden-bar");
+    } else {
+        document.getElementById("top-bar").classList.remove("hidden-bar");
+        hideDropdowns();
+    }
+});
+
+document.getElementById("card-nav-btn").addEventListener("click", () => {
+    if (selectedCardCoords) {
+        startRoutingToCoords(selectedCardCoords, selectedCardName);
+    }
+});
+
+document.getElementById("card-fav-btn").addEventListener("click", () => {
+    alert(`Saved "${selectedCardName}" to your favorite parking roads.`);
+});
+
+document.getElementById("map-input").addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimeout);
+    const val = e.target.value;
+    searchDebounceTimeout = setTimeout(() => {
+        renderDropdown('map-dropdown', 'map-input', val);
+    }, 200);
+});
+
+document.getElementById("dest-input").addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimeout);
+    const val = e.target.value;
+    searchDebounceTimeout = setTimeout(() => {
+        renderDropdown('dest-dropdown', 'dest-input', val);
+    }, 200);
+});
+
+document.getElementById("dest-search-btn").addEventListener("click", () => handleSearch("dest-input"));
+document.getElementById("dest-input").addEventListener("keypress", (e) => { if(e.key === "Enter") handleSearch("dest-input"); });
+
+document.getElementById("dest-cancel-btn").addEventListener("click", () => {
+    document.getElementById("dest-bar").classList.remove("show");
+    document.getElementById("top-bar").classList.remove("hidden-bar");
+    document.getElementById("nav-mode-btn").classList.remove("active");
+    navModeOn = false;
+    hideDropdowns();
+});
+
+document.getElementById("nav-go-btn").addEventListener("click", () => {
+    navActive = true;
+    updateMarkerElement();
+    setParkingLayersVisibility(false);
+
+    document.getElementById("top-bar").classList.add("hidden-bar");
+    document.getElementById("dest-bar").classList.remove("show");
+    document.getElementById("nav-mode-btn").classList.remove("active");
+    hideDropdowns();
+
+    document.getElementById("nav-panel").classList.remove("show");
+    document.getElementById("route-status").classList.add("show");
+    
+    if (playerCoords && map) {
+        map.easeTo({
+            center: playerCoords,
+            pitch: 60,
+            bearing: currentHeading,
+            zoom: 18,
+            duration: 1200
+        });
+    }
+    
+    startWatching();
+});
+
+document.getElementById("nav-cancel-btn").addEventListener("click", () => {
+    document.getElementById("nav-panel").classList.remove("show");
+    document.getElementById("top-bar").classList.remove("hidden-bar");
+    clearRoute();
+    removeDestMarker();
+});
+
+document.getElementById("rs-end-btn").addEventListener("click", stopNavigation);
+
+document.getElementById("card-close-btn").addEventListener("click", () => {
+    document.getElementById("parking-card").classList.remove("show");
+});
+
+// Initialize voice recognition on load
+initVoiceAssistant();
 </script>
 </body>
 </html>
