@@ -1,2453 +1,1131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#050816" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>Parking Ease - AI Driving Assistant & Parking Finder</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#050816" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Parking Ease - Apple Maps Style AI Assistant & Parking Finder</title>
 
-<!-- Mapbox GL JS & CSS -->
-<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <!-- Mapbox GL JS & CSS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 
-<!-- Turf.js for Calculations & Route Snapping -->
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- Turf.js for Route Calculations & Snapping -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-<!-- Google Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<style>
-:root {
-  --bg-dark: #050816;
-  --panel-bg: rgba(10, 15, 30, 0.92);
-  --panel-border: rgba(255, 255, 255, 0.15);
-  --primary-blue: #2563eb;
-  --primary-blue-hover: #1d4ed8;
-  --text-main: #ffffff;
-  --text-sub: rgba(255, 255, 255, 0.65);
-  --color-free: #22c55e;
-  --color-paid: #f97316;
-  --color-timed: #facc15;
-  --color-restricted: #ef4444;
-  --color-hgv: #8b5cf6;
-  --color-roadworks: #f97316;
-  --color-ev: #06b6d4;
-  --color-fuel: #eab308;
-}
+    <style>
+        :root {
+            --bg-dark: #050816;
+            --panel-bg: rgba(10, 15, 30, 0.88);
+            --panel-border: rgba(255, 255, 255, 0.15);
+            --primary-blue: #2563eb;
+            --primary-blue-hover: #1d4ed8;
+            --text-main: #ffffff;
+            --text-sub: rgba(255, 255, 255, 0.65);
+            --color-free: #22c55e;
+            --color-paid: #f97316;
+            --color-timed: #facc15;
+            --color-restricted: #ef4444;
+            --color-hgv: #8b5cf6;
+            --color-roadworks: #f97316;
+            --color-ev: #06b6d4;
+            --color-disabled: #3b82f6;
+        }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-tap-highlight-color: transparent;
-}
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-body, html {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-dark);
-  color: var(--text-main);
-}
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            color: var(--text-main);
+        }
 
-/* Map container */
-#map {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-}
+        #map {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
 
-/* Utility classes for overlays and panels */
-#ui {
-  position: absolute;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: none;
-  display: none;
-  padding-top: env(safe-area-inset-top, 20px);
-  padding-bottom: env(safe-area-inset-bottom, 20px);
-}
-#ui.visible { display: block; }
+        /* Apple Glassmorphism Panels */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+        }
 
-/* Glass panels for UI elements */
-.glass-panel {
-  background: var(--panel-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--panel-border);
-  border-radius: 24px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-  pointer-events: auto;
-}
+        /* WELCOME / HOME SCREEN */
+        #home {
+            position: absolute;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background: radial-gradient(circle at 50% 20%, #0d1f4e 0%, #050816 85%);
+            padding: 24px 16px;
+            overflow-y: auto;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+        }
 
-/* Home Screen styles */
-#home {
-  position: absolute;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  background: radial-gradient(circle at 50% 20%, #0d1f4e 0%, #050816 85%);
-  padding: 24px 16px;
-  overflow-y: auto;
-  transition: opacity 0.35s ease, visibility 0.35s ease;
-}
-#home.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        #home.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
 
-.home-content {
-  max-width: 460px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+        .home-content {
+            width: min(460px, 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: auto 0;
+        }
 
-/* Branding header */
-.brand-header {
-  text-align: center;
-  margin-bottom: 20px;
-}
-.brand-logo {
-  width: 68px;
-  height: 68px;
-  background: linear-gradient(135deg, #22c55e, #2563eb);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 12px;
-  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
-}
-.brand-logo svg {
-  width: 38px;
-  height: 38px;
-  fill: #fff;
-}
-#home h1 {
-  font-size: 2.1rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  background: linear-gradient(to right, #ffffff, #86efac);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
-}
-#home p {
-  color: var(--text-sub);
-  font-size: 0.95rem;
-  margin-top: 4px;
-  text-align: center;
-}
+        .brand-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-/* Search container styles */
-.search-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-}
-.search-wrap {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 100px;
-  padding: 6px 6px 6px 18px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-.search-wrap:focus-within {
-  border-color: var(--primary-blue);
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
-  background: rgba(255, 255, 255, 0.14);
-}
-#home-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #fff;
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-#home-input::placeholder {
-  color: rgba(255,255,255,0.45);
-}
-.btn-primary {
-  background: var(--primary-blue);
-  color: #fff;
-  border: none;
-  border-radius: 100px;
-  padding: 13px 22px;
-  font-weight: 700;
-  font-size: 0.92rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.btn-primary:active {
-  transform: scale(0.97);
-  background: var(--primary-blue-hover);
-}
-.home-actions {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-}
-.btn-secondary {
-  flex: 1;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.18);
-  color: #fff;
-  padding: 13px;
-  border-radius: 100px;
-  font-weight: 600;
-  font-size: 0.88rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background 0.2s ease;
-}
-.btn-secondary:active { background: rgba(255,255,255,0.15); }
+        .brand-logo {
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(135deg, #22c55e, #2563eb);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
+        }
 
-/* Quick suggestions pills */
-.quick-suggestions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 0;
-  width: 100%;
-}
-.quick-suggestions::-webkit-scrollbar { display: none; }
-.quick-pill {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--text-sub);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 100px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-.quick-pill:hover, .quick-pill:active {
-  background: rgba(34,197,94,0.25);
-  border-color: #22c55e;
-  color: #fff;
-}
+        .brand-logo svg {
+            width: 38px;
+            height: 38px;
+            fill: #fff;
+        }
 
-/* How-to guide card styles */
-.how-to-card {
-  margin-top: 24px;
-  width: 100%;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 20px;
-  padding: 18px 20px;
-}
-.how-to-title {
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #86efac;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.how-to-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.how-to-step:last-child { margin-bottom: 0; }
-.step-num {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(34,197,94,0.25);
-  border: 1px solid #22c55e;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.step-text {
-  font-size: 0.82rem;
-  color: rgba(255,255,255,0.85);
-  line-height: 1.35;
-}
-.step-text strong { color: #fff; }
+        #home h1 {
+            font-size: 2.1rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #86efac);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-/* Map UI overlay styles */
-#ui {
-  position: absolute;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: none;
-  display: none;
-  padding-top: env(safe-area-inset-top, 20px);
-  padding-bottom: env(safe-area-inset-bottom, 20px);
-}
-#ui.visible { display: block; }
+        #home p {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
 
-/* Side panel for nearby parking */
-.parking-side-panel {
-  position: absolute;
-  top: calc(env(safe-area-inset-top,0px)+80px);
-  right: 12px;
-  width: min(240px, 60vw);
-  max-height: min(400px, 45vh);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 18px;
-  transition: all 0.3s ease;
-}
-.side-panel-header {
-  padding: 10px 12px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  border-bottom: 1px solid var(--panel-border);
-  background: rgba(0,0,0,0.3);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-}
-.panel-toggle-arrow {
-  transition: transform 0.3s ease;
-  opacity: 0.8;
-  flex-shrink: 0;
-}
-.collapsed .panel-toggle-arrow {
-  transform: rotate(-180deg);
-}
-.panel-collapsible-body {
-  display: flex;
-  flex-direction: column;
-  max-height: 350px;
-  overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.2s ease;
-}
-.collapsed .panel-collapsible-body { max-height: 0; opacity: 0; }
-.filter-bar {
-  display: flex;
-  gap: 4px;
-  padding: 6px 8px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--panel-border);
-  background: rgba(0,0,0,0.2);
-}
-.filter-bar::-webkit-scrollbar { display: none; }
-.filter-chip {
-  padding: 4px 8px;
-  border-radius: 100px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-sub);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-.filter-chip:hover { background: rgba(255,255,255,0.12); }
-.filter-chip.active {
-  color: #fff;
-  background: rgba(34,197,94,0.35);
-  border-color: #22c55e;
-  box-shadow: 0 0 10px rgba(34,197,94,0.3);
-}
-.chip-dot {
-  width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0;
-}
-.side-panel-content {
-  padding: 6px;
-  overflow-y: auto;
-  display: flex; flex-direction: column; gap: 6px;
-}
-.side-panel-content::-webkit-scrollbar { width: 3px; }
-.side-panel-content::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-  border-radius: 4px;
-}
-.parking-item-card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 100px;
-  padding: 8px 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.parking-item-card:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.25);
-}
-.item-top {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;
-}
-.item-title {
-  font-size: 0.75rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
-}
-.item-dist {
-  font-size: 0.65rem; font-weight: 700; color: #86efac; background: rgba(34,197,94,0.2); padding: 2px 5px; border-radius: 4px;
-}
-.item-bottom {
-  display: flex; align-items: center; gap: 4px; font-size: 0.65rem; color: var(--text-sub);
-}
-.item-badge {
-  width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0;
-}
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
 
-/* Search bar & dropdown */
-#top-bar {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+16px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(450px, 92vw);
-  pointer-events: auto;
-  z-index: 1002;
-}
-#top-bar.hidden-bar { display: none; }
-.search-glass {
-  display: flex; align-items: center; padding: 6px 6px 6px 18px; gap: 6px;
-}
-#map-input {
-  flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.95rem; font-weight: 500;
-}
-#map-input::placeholder { color: var(--text-sub); }
-.icon-btn {
-  width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--primary-blue); color: #fff;
-  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s ease, background 0.2s ease; flex-shrink: 0;
-}
-.icon-btn:active { transform: scale(0.92); }
-.mic-btn {
-  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-}
-.mic-btn.listening {
-  background: #ef4444;
-  animation: pulse-red 1.5s infinite;
-}
-@keyframes pulse-red {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
+        .search-wrap {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 100px;
+            padding: 6px 6px 6px 18px;
+            transition: all 0.2s ease;
+        }
 
-/* Search dropdown suggestions */
-.search-dropdown {
-  margin-top: 8px;
-  background: var(--panel-bg);
-  border-radius: 18px;
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
-  max-height: 320px;
-  overflow-y: auto;
-  display: none;
-  flex-direction: column;
-}
-.search-dropdown.show { display: flex; }
-.dropdown-item {
-  padding: 12px 16px;
-  font-size: 0.88rem;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  cursor: pointer;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.dropdown-item:last-child { border-bottom: none; }
-.dropdown-item:hover { background: rgba(37,99,235,0.25); }
-.dropdown-title-row {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
-}
-.dropdown-title {
-  font-weight: 700; color: #fff;
-}
-.dropdown-distance {
-  font-size: 0.72rem; font-weight: 700; color: #86efac; background: rgba(34,197,94,0.2); padding: 2px 8px; border-radius: 100px; border: 1px solid rgba(34,197,94,0.4); white-space: nowrap;
-}
-.dropdown-subtitle {
-  font-size: 0.75rem; color: var(--text-sub);
-}
+        .search-wrap:focus-within {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+            background: rgba(255, 255, 255, 0.14);
+        }
 
-/* Floating button group (SOS, Favorites, etc.) */
-.fab-group {
-  position: absolute; right: 16px; bottom: calc(env(safe-area-inset-bottom,0px)+24px);
-  display: flex; flex-direction: column; gap: 12px; pointer-events: auto; z-index: 10;
-}
-.fab {
-  width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--panel-border);
-  background: var(--panel-bg); color: #fff; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4); transition: all 0.2s ease;
-}
-.fab:active { transform: scale(0.92); }
-.fab.active { background: var(--primary-blue); border-color: var(--primary-blue); }
+        .search-wrap input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
 
-/* Legend styling */
-#legend {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+80px);
-  left: 12px;
-  padding: 10px 12px;
-  border-radius: 16px;
-  transition: all 0.2s ease;
-  background: rgba(0,0,0,0.4);
-}
-#legend.hidden-legend { opacity: 0; transform: scale(0.8); pointer-events: none; }
-.leg-mini {
-  display: flex; align-items: center; gap: 8px; font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 6px;
-}
-.leg-mini:last-child { margin-bottom: 0; }
-.dot {
-  width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; flex-shrink: 0;
-}
+        .search-wrap input::placeholder {
+            color: rgba(255, 255, 255, 0.45);
+        }
 
-/* Loader spinner styles */
-#loader {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+80px);
-  left: 50%; transform: translateX(-50%);
-  padding: 8px 18px; border-radius: 100px; font-size: 0.8rem; font-weight: 600;
-  display: none; align-items: center; gap: 8px; background: var(--panel-bg);
-  border: 1px solid var(--panel-border); box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-  z-index: 100;
-}
-#loader.show { display: flex; }
-.spinner {
-  width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+        .btn-primary {
+            background: var(--primary-blue);
+            color: #fff;
+            border: none;
+            border-radius: 100px;
+            padding: 13px 22px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
 
-/* Bottom card (parking details, navigation) */
-.bottom-card {
-  position: absolute;
-  bottom: calc(env(safe-area-inset-bottom,0px)+20px);
-  left: 50%; transform: translateX(-50%);
-  width: min(420px, 92vw);
-  display: none;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 20px;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
-  z-index: 999;
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.show { display: block; }
-@keyframes slideUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(30px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
+        .btn-primary:active {
+            transform: scale(0.97);
+            background: var(--primary-blue-hover);
+        }
 
-/* Card header styles */
-.card-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  display: flex; justify-content: space-between; align-items: center;
-}
-.card-title-group {
-  display: flex; align-items: center; gap: 12px;
-}
-.card-icon {
-  width: 40px; height: 40px; border-radius: 14px; background: rgba(34,197,94,0.2); border: 1px solid rgba(34,197,94,0.4);
-  display: flex; align-items: center; justify-content: center;
-}
-.card-title { font-size: 1rem; font-weight: 700; line-height: 1.2; }
-.card-subtitle { font-size: 0.75rem; color: var(--text-sub); margin-top: 2px; }
-.card-close {
-  width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(255,255,255,0.1); color: #fff; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
+        .home-actions {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
 
-/* Card body styles */
-.card-body {
-  padding: 16px 20px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.info-row {
-  display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem;
-}
-.info-label { color: var(--text-sub); }
-.info-value { font-weight: 600; }
-.badge {
-  padding: 4px 10px;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+        .btn-secondary {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #fff;
+            padding: 13px;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s ease;
+        }
 
-/* Navigation overlay styles */
-#dest-bar {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+16px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(440px, 92vw);
-  pointer-events: auto;
-  z-index: 1001;
-}
-#dest-bar.show { display: block; }
-#route-status {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+16px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(420px, 92vw);
-  padding: 14px 18px;
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(0,0,0,0.5);
-  border-radius: 12px;
-  z-index: 2000;
-}
-#route-status.show { display: flex; }
-#rs-main-text {
-  font-weight: 700; font-size: 0.95rem; color: #fff;
-}
-#rs-sub-text {
-  font-size: 0.75rem; color: var(--text-sub);
-}
-#rs-end-btn {
-  padding: 10px 18px; font-size: 0.85rem; font-weight: 800; border-radius: 100px; border: 1px solid rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.25); color: #f87171; cursor: pointer; transition: all 0.2s ease;
-}
-#rs-end-btn:active { transform: scale(0.97); }
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.15);
+        }
 
-/* Markers */
-.player-marker {
-  width: 32px; height: 32px; position: relative;
-}
-.player-pulse {
-  position: absolute; inset: -8px; border-radius: 50%; background: rgba(37, 99, 235, 0.35);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.6); opacity: 0; }
-}
-.player-dot {
-  width: 100%; height: 100%; background: #2563eb; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); position: relative; z-index: 2;
-}
-.satnav-arrow-wrapper {
-  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease-out;
-}
-.satnav-arrow {
-  width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 24px solid #38bdf8; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
-  position: relative;
-}
-.satnav-arrow::after {
-  content: ''; position: absolute; top: 14px; left: -6px;
-  width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid #0284c7;
-}
-.dest-pin {
-  width: 32px; height: 32px; background: #ef4444; border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
-}
-.roadwork-marker-badge {
-  width: 28px; height: 28px; background: linear-gradient(135deg, #f97316, #ea580c); border: 2px solid #fff; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.6); cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.roadwork-marker-badge:hover { transform: scale(1.2); }
-.roadwork-marker-badge svg {
-  width: 15px; height: 15px; stroke: #fff; stroke-width: 2.2; fill: none;
-}
+        .quick-suggestions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 2px 0;
+            width: 100%;
+            scrollbar-width: none;
+        }
+        .quick-suggestions::-webkit-scrollbar { display: none; }
 
-/* Voice assistant bubble */
-#voice-status-bubble {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+72px);
-  left: 50%; transform: translateX(-50%);
-  padding: 8px 16px; border-radius: 100px; font-size: 0.82rem; font-weight: 700;
-  display: none; align-items: center; gap: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  background: rgba(0,0,0,0.7);
-  z-index: 2000;
-}
-#voice-status-bubble.show { display: flex; }
-#voice-status-icon { margin-right: 8px; }
+        .quick-pill {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-sub);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 100px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .quick-pill:hover, .quick-pill:active {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: #22c55e;
+            color: #fff;
+        }
 
-#weather-widget {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px)+16px);
-  left: 16px;
-  padding: 8px 14px;
-  border-radius: 100px;
-  font-size: 0.78rem; font-weight: 700;
-  display: flex; align-items: center; gap: 6px;
-  z-index: 1000;
-  pointer-events: auto;
-}
+        /* IN-MAP UI */
+        #ui {
+            position: absolute;
+            inset: 0;
+            z-index: 1000;
+            pointer-events: none;
+            display: none;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
 
-/* Emergency SOS button */
-.fab-sos {
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border-color: rgba(255,255,255,0.4);
-  font-weight: 800; font-size: 0.85rem;
-  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
-}
+        #ui.visible {
+            display: block;
+        }
 
-/* Favorites modal */
-#favs-modal, #sos-modal {
-  position: absolute; inset: 0; background: rgba(5,8,22,0.85); backdrop-filter: blur(20px);
-  z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px;
-}
-#favs-modal.show, #sos-modal.show { display: flex; }
-.modal-body {
-  width: min(420px, 95vw);
-  max-height: 80vh;
-  overflow-y: auto;
-  border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 16px; background: rgba(255,255,255,0.06);
-}
-.fav-item, .sos-item {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 16px;
-  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.2s;
-}
-.fav-item:hover, .sos-item:hover { background: rgba(37,99,235,0.25); }
-.fav-item strong { font-weight: 700; }
-.sos-item strong { font-weight: 700; color: #ef4444; }
+        /* APPLE MAPS SIDE/BOTTOM PANEL */
+        .parking-side-panel {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 80px);
+            right: 12px;
+            left: auto;
+            width: min(250px, 62vw);
+            max-height: min(420px, 48vh);
+            pointer-events: auto;
+            z-index: 900;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
 
-/* Speed camera marker styles */
-.speed-cam-marker {
-  width: 24px; height: 24px; background: #ef4444; border: 2px solid #fff; border-radius: 4px; font-size: 0.65rem; font-weight: 800;
-  display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-}
+        .side-panel-header {
+            padding: 10px 12px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0, 0, 0, 0.3);
+            letter-spacing: 0.02em;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
 
-/* Responsive adjustments for mobile */
-@media(max-width: 600px) {
-  .parking-side-panel { width: 190px; right: 8px; top: calc(env(safe-area-inset-top,0px)+72px); }
-  #legend { left: 8px; top: calc(env(safe-area-inset-top,0px)+72px); }
-  #weather-widget { display: none; }
-}
-</style>
+        .panel-toggle-arrow {
+            transition: transform 0.3s ease;
+            opacity: 0.8;
+            flex-shrink: 0;
+        }
+
+        .parking-side-panel.collapsed .panel-toggle-arrow {
+            transform: rotate(-180deg);
+        }
+
+        .panel-collapsible-body {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-height: 360px;
+            transition: max-height 0.3s ease, opacity 0.2s ease;
+        }
+
+        .parking-side-panel.collapsed .panel-collapsible-body {
+            max-height: 0 !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 4px;
+            padding: 6px 8px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0, 0, 0, 0.2);
+            scrollbar-width: none;
+        }
+
+        .filter-bar::-webkit-scrollbar { display: none; }
+
+        .filter-chip {
+            padding: 4px 8px;
+            border-radius: 100px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .filter-chip.active {
+            color: #fff;
+            background: rgba(34, 197, 94, 0.35);
+            border-color: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+        }
+
+        .chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .side-panel-content {
+            padding: 6px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .parking-item-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 100px;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .parking-item-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+
+        .item-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+
+        .item-dist {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #86efac;
+            background: rgba(34, 197, 94, 0.2);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        .item-bottom {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.65rem;
+            color: var(--text-sub);
+        }
+
+        .item-badge {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        /* SEARCH BAR */
+        #top-bar {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(450px, 92vw);
+            pointer-events: auto;
+            z-index: 1002;
+        }
+
+        .search-glass {
+            display: flex;
+            align-items: center;
+            padding: 6px 6px 6px 18px;
+            gap: 6px;
+        }
+
+        #map-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        #map-input::placeholder { color: var(--text-sub); }
+
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary-blue);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .icon-btn:active { transform: scale(0.92); }
+
+        .mic-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .mic-btn.listening {
+            background: #ef4444;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .search-dropdown {
+            margin-top: 8px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            overflow: hidden;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .search-dropdown.show { display: flex; }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            font-size: 0.88rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .dropdown-item:hover, .dropdown-item:active {
+            background: rgba(37, 99, 235, 0.25);
+        }
+
+        .dropdown-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .dropdown-title { font-weight: 700; color: #fff; }
+        .dropdown-distance {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #86efac;
+            background: rgba(34, 197, 94, 0.2);
+            padding: 2px 8px;
+            border-radius: 100px;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            white-space: nowrap;
+        }
+
+        .dropdown-subtitle { font-size: 0.75rem; color: var(--text-sub); }
+
+        /* FLOATING ACTION BUTTONS */
+        .fab-group {
+            position: absolute;
+            right: 16px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .fab {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 1px solid var(--panel-border);
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .fab:active { transform: scale(0.92); }
+        .fab.active { background: var(--primary-blue); border-color: var(--primary-blue); }
+
+        #legend {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 80px);
+            left: 12px;
+            padding: 10px 12px;
+            pointer-events: auto;
+            transition: opacity 0.2s, transform 0.2s;
+            border-radius: 16px;
+        }
+
+        #legend.hidden-legend { opacity: 0; transform: scale(0.8); pointer-events: none; }
+
+        .leg-mini {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 6px;
+        }
+
+        .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+        #loader {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 80px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: none;
+            pointer-events: none;
+            backdrop-filter: blur(12px);
+            z-index: 100;
+        }
+
+        #loader.show { display: flex; align-items: center; gap: 8px; }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* BOTTOM DETAIL CARDS */
+        .bottom-card {
+            position: absolute;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(420px, 92vw);
+            pointer-events: auto;
+            z-index: 999;
+            display: none;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .bottom-card.show { display: block; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translate(-50%, 30px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title-group { display: flex; align-items: center; gap: 12px; }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-title { font-size: 1rem; font-weight: 700; }
+        .card-subtitle { font-size: 0.75rem; color: var(--text-sub); margin-top: 2px; }
+
+        .card-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+        .info-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; }
+        .info-label { color: var(--text-sub); }
+        .info-value { font-weight: 600; }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        #route-status {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(420px, 92vw);
+            padding: 14px 18px;
+            pointer-events: auto;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 2000;
+            border-color: rgba(37, 99, 235, 0.5);
+        }
+
+        #route-status.show { display: flex; }
+
+        /* MARKERS */
+        .player-marker { width: 32px; height: 32px; position: relative; }
+        .player-pulse {
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.35);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .player-dot {
+            width: 100%;
+            height: 100%;
+            background: #2563eb;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 2;
+        }
+
+        .satnav-arrow-wrapper {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease-out;
+        }
+
+        .satnav-arrow {
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 24px solid #38bdf8;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+        }
+
+        .dest-pin {
+            width: 32px;
+            height: 32px;
+            background: #ef4444;
+            border: 3px solid #ffffff;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+        }
+
+        /* AI Voice Status Floating Bubble */
+        #voice-status-bubble {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 0px) + 72px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            z-index: 2000;
+            pointer-events: auto;
+        }
+        #voice-status-bubble.show { display: flex; }
+
+        .fab-sos {
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+            border-color: rgba(255, 255, 255, 0.4);
+            font-weight: 800;
+            font-size: 0.85rem;
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Modals */
+        #favs-modal, #sos-modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 8, 22, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            pointer-events: auto;
+        }
+        #favs-modal.show, #sos-modal.show { display: flex; }
+
+        .modal-body {
+            width: min(420px, 95vw);
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 24px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .fav-item, .sos-item {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+        .fav-item:hover, .sos-item:hover { background: rgba(37, 99, 235, 0.25); }
+
+        @media (max-width: 600px) {
+            .parking-side-panel { width: 190px; right: 8px; top: calc(env(safe-area-inset-top, 0px) + 72px); }
+            #legend { left: 8px; top: calc(env(safe-area-inset-top, 0px) + 72px); }
+        }
+    </style>
 </head>
 <body>
 
-<!-- Home Screen -->
+<!-- HOME SCREEN -->
 <div id="home">
-  <div class="home-content">
-    <!-- Logo and title -->
-    <div class="brand-header">
-      <div class="brand-logo">
-        <svg viewBox="0 0 24 24"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"></path></svg>
-      </div>
-      <h1>Parking Ease</h1>
-      <p>Find free street parking & parking zones near you</p>
+    <div class="home-content">
+        <div class="brand-header">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
+            </div>
+            <h1>Parking Ease</h1>
+            <p>Find free street parking & parking zones near you</p>
+        </div>
+
+        <div class="search-container">
+            <div class="search-wrap">
+                <input id="home-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley), postcodes..." autocomplete="off" />
+                <button id="home-mic-btn" class="icon-btn mic-btn" title="Voice Search" style="margin-right: 4px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+                <button id="home-btn" class="btn-primary">Search</button>
+            </div>
+
+            <div class="quick-suggestions">
+                <span class="quick-pill" onclick="quickSearch('Tesco')">Tesco</span>
+                <span class="quick-pill" onclick="quickSearch('Wembley Stadium')">Wembley Stadium</span>
+                <span class="quick-pill" onclick="quickSearch('Sainsbury\'s')">Sainsbury's</span>
+                <span class="quick-pill" onclick="quickSearch('Train Station')">Station</span>
+            </div>
+
+            <div class="home-actions">
+                <button id="open-map-btn" class="btn-secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+                    Explore Map
+                </button>
+                <button id="home-locate-btn" class="btn-secondary" style="background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.4);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                    Locate Me
+                </button>
+            </div>
+        </div>
     </div>
-    <!-- Search area -->
-    <div class="search-container">
-      <div class="search-wrap">
-        <input id="home-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley), postcodes..." autocomplete="off" />
-        <button id="home-mic-btn" class="icon-btn mic-btn" title="Voice Search">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="23"></line>
-            <line x1="8" y1="23" x2="16" y2="23"></line>
-          </svg>
-        </button>
-        <button id="home-btn" class="btn-primary">Search</button>
-      </div>
-      <!-- Quick suggestions -->
-      <div class="quick-suggestions">
-        <span class="quick-pill" onclick="quickSearch('Tesco')"> Tesco</span>
-        <span class="quick-pill" onclick="quickSearch('Wembley Stadium')"> Wembley Stadium</span>
-        <span class="quick-pill" onclick="quickSearch('Sainsbury\'s')"> Sainsbury's</span>
-        <span class="quick-pill" onclick="quickSearch('Train Station')"> Station</span>
-      </div>
-      <!-- Actions -->
-      <div class="home-actions">
-        <button id="open-map-btn" class="btn-secondary">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-          </svg>
-          Explore Map
-        </button>
-        <button id="home-locate-btn" class="btn-secondary" style="background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.4);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
-          </svg>
-          Locate Me
-        </button>
-      </div>
-    </div>
-    <!-- How-to guide -->
-    <div class="how-to-card">
-      <div class="how-to-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        Mainly Built to Find Free Parking
-      </div>
-      <div class="how-to-step">
-        <div class="step-num">1</div>
-        <div class="step-text"><strong>Look for Green Lines:</strong> <span style="color:#22c55e;font-weight:700">GREEN</span> highlights <strong>100% Free Parking</strong> streets and free parking lots!</div>
-      </div>
-      <div class="how-to-step">
-        <div class="step-num">2</div>
-        <div class="step-text"><strong>Identify Restrictions:</strong> Shows <span style="color:#f97316;font-weight:700">Orange</span> (Paid), <span style="color:#facc15;font-weight:700">Yellow</span> (Timed Limit), and <span style="color:#ef4444;font-weight:700">Red</span> (No Parking / Restrictions).</div>
-      </div>
-      <div class="how-to-step">
-        <div class="step-num">3</div>
-        <div class="step-text"><strong>Live Road Works:</strong> Real-time road work zones styled like Apple Maps show dashed hazards & warning icons.</div>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Map Canvas -->
+<!-- MAP CANVAS -->
 <div id="map"></div>
 
-<!-- UI Overlays -->
+<!-- MAP OVERLAYS -->
 <div id="ui">
-  <!-- Voice Status Bubble -->
-  <div id="voice-status-bubble" class="glass-panel">
-    <span id="voice-status-icon"></span>
-    <span id="voice-status-text">Listening...</span>
-  </div>
-  <!-- Weather Widget -->
-  <div id="weather-widget" class="glass-panel">
-    <span id="weather-icon"></span>
-    <span id="weather-text">14°C Light Rain</span>
-  </div>
-  <!-- Nearby Parking Side Panel -->
-  <div id="parking-side-panel" class="glass-panel parking-side-panel collapsed">
-    <div id="side-panel-header" class="side-panel-header">
-      <span>Nearest Parking</span>
-      <svg class="panel-toggle-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
+    <div id="voice-status-bubble" class="glass-panel">
+        <span id="voice-status-icon"></span>
+        <span id="voice-status-text">Listening...</span>
     </div>
-    <div id="panel-collapsible-body" class="panel-collapsible-body">
-      <!-- Filters -->
-      <div class="filter-bar">
-        <button class="filter-chip active" data-filter="all">All</button>
-        <button class="filter-chip" data-filter="free"><span class="chip-dot" style="background:var(--color-free)"></span>Free</button>
-        <button class="filter-chip" data-filter="paid"><span class="chip-dot" style="background:var(--color-paid)"></span>Paid</button>
-        <button class="filter-chip" data-filter="timed"><span class="chip-dot" style="background:var(--color-timed)"></span>Timed</button>
-        <button class="filter-chip" data-filter="restricted"><span class="chip-dot" style="background:var(--color-restricted)"></span>No Parking</button>
-        <button class="filter-chip" data-filter="hgv"><span class="chip-dot" style="background:var(--color-hgv)"></span>HGV</button>
-        <button class="filter-chip" data-filter="ev"><span class="chip-dot" style="background:var(--color-ev)"></span>EV</button>
-        <button class="filter-chip" data-filter="roadwork"><span class="chip-dot" style="background:var(--color-roadworks)"></span>Works</button>
-      </div>
-      <!-- Parking list -->
-      <div id="side-panel-content" class="side-panel-content">
-        <div style="font-size: 0.72rem; color: var(--text-sub); text-align: center; padding: 10px;">
-          Searching location...
+
+    <div id="parking-side-panel" class="glass-panel parking-side-panel">
+        <div id="side-panel-header" class="side-panel-header">
+            <span>Nearest Parking</span>
+            <svg class="panel-toggle-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
-      </div>
+        
+        <div id="panel-collapsible-body" class="panel-collapsible-body">
+            <div class="filter-bar">
+                <button class="filter-chip active" data-filter="all">All</button>
+                <button class="filter-chip" data-filter="free"><span class="chip-dot" style="background:var(--color-free)"></span>Free</button>
+                <button class="filter-chip" data-filter="paid"><span class="chip-dot" style="background:var(--color-paid)"></span>Paid</button>
+                <button class="filter-chip" data-filter="timed"><span class="chip-dot" style="background:var(--color-timed)"></span>Timed</button>
+                <button class="filter-chip" data-filter="restricted"><span class="chip-dot" style="background:var(--color-restricted)"></span>No Parking</button>
+                <button class="filter-chip" data-filter="hgv"><span class="chip-dot" style="background:var(--color-hgv)"></span>HGV</button>
+            </div>
+
+            <div id="side-panel-content" class="side-panel-content">
+                <div style="font-size: 0.72rem; color: var(--text-sub); text-align: center; padding: 10px;">Searching location...</div>
+            </div>
+        </div>
     </div>
-  </div>
-  <!-- Search Bar & Dest Input -->
-  <div id="top-bar">
-    <div class="glass-panel search-glass">
-      <input id="map-input" type="text" placeholder="Search roads, venues (e.g. Tesco, Wembley)..." autocomplete="off" />
-      <button id="map-mic-btn" class="icon-btn mic-btn" title="Voice Search">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-          <line x1="12" y1="19" x2="12" y2="23"></line>
-          <line x1="8" y1="23" x2="16" y2="23"></line>
-        </svg>
-      </button>
-      <button id="map-btn" class="icon-btn" title="Search">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-      </button>
+
+    <div id="top-bar">
+        <div class="glass-panel search-glass">
+            <input id="map-input" type="text" placeholder="Search roads, venues..." autocomplete="off" />
+            <button id="map-mic-btn" class="icon-btn mic-btn" title="Voice Search">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </button>
+            <button id="map-btn" class="icon-btn" title="Search">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+        </div>
+        <div id="map-dropdown" class="search-dropdown"></div>
     </div>
-    <div id="map-dropdown" class="search-dropdown"></div>
-  </div>
-  <!-- Destination input overlay -->
-  <div id="dest-bar">
-    <div class="glass-panel search-glass" style="border-color: rgba(37, 99, 235, 0.5);">
-      <input id="dest-input" type="text" placeholder="Where to? (e.g. Tesco, Wembley Stadium)" autocomplete="off" />
-      <button id="dest-search-btn" class="icon-btn" style="margin-right: 6px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-      </button>
-      <button id="dest-cancel-btn" class="card-close" style="flex-shrink: 0;"></button>
+
+    <div id="route-status" class="glass-panel">
+        <div>
+            <div id="rs-main-text" style="font-weight: 700; font-size: 0.95rem;">Navigating...</div>
+            <div id="rs-sub-text" style="font-size: 0.75rem; color: var(--text-sub);">Following live route</div>
+        </div>
+        <button id="rs-end-btn" class="btn-primary" style="background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px 18px; font-size: 0.85rem; font-weight: 800; cursor: pointer;">End Route</button>
     </div>
-    <div id="dest-dropdown" class="search-dropdown"></div>
-  </div>
-  <!-- Navigation route info -->
-  <div id="route-status" class="glass-panel">
-    <div>
-      <div id="rs-main-text" style="font-weight: 700; font-size: 0.95rem;">Navigating...</div>
-      <div id="rs-sub-text" style="font-size: 0.75rem; color: var(--text-sub);">Following live sat nav route</div>
+
+    <div id="legend" class="glass-panel">
+        <div class="leg-mini"><div class="dot" style="background:var(--color-free)"></div>Free Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
+        <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Mode</div>
     </div>
-    <button id="rs-end-btn" class="btn-primary" style="background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px 18px; font-size: 0.85rem; font-weight: 800;">End Route</button>
-  </div>
-  <!-- Legend -->
-  <div id="legend" class="glass-panel">
-    <div class="leg-mini"><div class="dot" style="background:var(--color-free)"></div>Free Parking</div>
-    <div class="leg-mini"><div class="dot" style="background:var(--color-paid)"></div>Paid Parking</div>
-    <div class="leg-mini"><div class="dot" style="background:var(--color-timed)"></div>Timed Parking</div>
-    <div class="leg-mini"><div class="dot" style="background:var(--color-restricted)"></div>No Parking</div>
-    <div class="leg-mini"><div class="dot" style="background:var(--color-hgv)"></div>HGV Mode</div>
-    <div class="leg-mini"><div class="dot" style="background:var(--color-roadworks)"></div>Road Work</div>
-  </div>
-  <!-- Loader -->
-  <div id="loader">
-    <div class="spinner"></div>
-    <span>Loading Parking & Live Data...</span>
-  </div>
-  <!-- Floating action buttons -->
-  <div class="fab-group">
-    <button id="sos-btn" class="fab fab-sos" title="Emergency SOS">SOS</button>
-    <button id="favs-btn" class="fab" title="Saved Places">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-      </svg>
-    </button>
-    <button id="hgv-mode-btn" class="fab" title="HGV Mode">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="1" y="3" width="15" height="13"></rect>
-        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-        <circle cx="5.5" cy="18.5" r="2.5"></circle>
-        <circle cx="18.5" cy="18.5" r="2.5"></circle>
-      </svg>
-    </button>
-    <button id="legend-toggle-btn" class="fab" title="Toggle Legend">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="8" y1="6" x2="21" y2="6"></line>
-        <line x1="8" y1="12" x2="21" y2="12"></line>
-        <line x1="8" y1="18" x2="21" y2="18"></line>
-        <line x1="3" y1="6" x2="3.01" y2="6"></line>
-        <line x1="3" y1="12" x2="3.01" y2="12"></line>
-        <line x1="3" y1="18" x2="3.01" y2="18"></line>
-      </svg>
-    </button>
-    <button id="nav-mode-btn" class="fab" title="Navigation Mode">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-      </svg>
-    </button>
-    <button id="locate-btn" class="fab" title="My Location">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="2" x2="12" y2="6"></line>
-        <line x1="12" y1="18" x2="12" y2="22"></line>
-        <line x1="2" y1="12" x2="6" y2="12"></line>
-        <line x1="18" y1="12" x2="22" y2="12"></line>
-      </svg>
-    </button>
-  </div>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <span>Loading Parking Data...</span>
+    </div>
+
+    <div class="fab-group">
+        <button id="sos-btn" class="fab fab-sos" title="Emergency SOS">SOS</button>
+        <button id="favs-btn" class="fab" title="Saved Places">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+        <button id="hgv-mode-btn" class="fab" title="HGV Mode">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+        </button>
+        <button id="locate-btn" class="fab" title="My Location">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line></svg>
+        </button>
+    </div>
+
+    <div id="parking-card" class="glass-panel bottom-card">
+        <div class="card-header">
+            <div class="card-title-group">
+                <div class="card-icon" id="card-icon-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#86efac"><path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"/></svg>
+                </div>
+                <div>
+                    <div id="card-title" class="card-title">Unknown Road</div>
+                    <div id="card-type" class="card-subtitle">Street Parking</div>
+                </div>
+            </div>
+            <button id="card-close-btn" class="card-close">✕</button>
+        </div>
+        <div class="card-body">
+            <div class="info-row">
+                <span class="info-label">AI Parking Score</span>
+                <span id="card-score" class="info-value" style="color:#86efac">94/100</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Status</span>
+                <span id="card-status-badge" class="badge">Free</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Max Stay</span>
+                <span id="card-maxstay" class="info-value">No Limit</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button id="card-nav-btn" class="btn-primary" style="flex:1; border-radius: 100px;">Navigate Here</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="nav-panel" class="glass-panel bottom-card">
+        <div class="card-header">
+            <div class="card-title-group">
+                <div class="card-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                </div>
+                <div>
+                    <div id="nav-dest-name" class="card-title">Selected Point</div>
+                    <div class="card-subtitle">Calculated Route Details</div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="info-row">
+                <span class="info-label">Driving Distance</span>
+                <span id="nav-car-dist" class="info-value">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Est. Drive Time</span>
+                <span id="nav-car-time" class="info-value">--</span>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <button id="nav-cancel-btn" class="btn-secondary">Cancel</button>
+                <button id="nav-go-btn" class="btn-primary" style="flex:1">Start Navigation</button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Parking card overlay -->
-<div id="parking-card" class="bottom-card">
-  <div class="card-header">
-    <div class="card-title-group">
-      <div class="card-icon" id="card-icon-wrap">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="#86efac">
-          <path d="M6 3h7a5 5 0 0 1 5 5 5 5 0 0 1-5 5H10v8H6V3zm4 4v4h3a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3z"></path>
-        </svg>
-      </div>
-      <div>
-        <div id="card-title" class="card-title">Unknown Road</div>
-        <div id="card-type" class="card-subtitle">Street Parking</div>
-      </div>
-    </div>
-    <button id="card-close-btn" class="card-close">&times;</button>
-  </div>
-  <div class="card-body">
-    <div class="info-row">
-      <span class="info-label">AI Parking Score</span>
-      <span id="card-score" class="info-value" style="color:#86efac">94/100</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Status</span>
-      <span id="card-status-badge" class="badge">Free</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Max Stay / Info</span>
-      <span id="card-maxstay" class="info-value">No Limit</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Fee</span>
-      <span id="card-fee" class="info-value">None</span>
-    </div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="card-fav-btn" class="btn-secondary" style="padding:12px;">Save</button>
-      <button id="card-nav-btn" class="btn-primary" style="flex:1; border-radius:100px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-        </svg>
-        Navigate Here
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Navigation route info -->
-<div id="nav-panel" class="bottom-card">
-  <div class="card-header">
-    <div class="card-title-group">
-      <div class="card-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2">
-          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-        </svg>
-      </div>
-      <div>
-        <div id="nav-dest-name" class="card-title">Selected Point</div>
-        <div class="card-subtitle">Calculated Route Details</div>
-      </div>
-    </div>
-  </div>
-  <div class="card-body">
-    <div class="info-row">
-      <span class="info-label">Driving Distance</span>
-      <span id="nav-car-dist" class="info-value">--</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Est. Drive Time</span>
-      <span id="nav-car-time" class="info-value">--</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Est. Walk Time</span>
-      <span id="nav-walk-time" class="info-value">--</span>
-    </div>
-    <div style="display:flex; gap:10px; margin-top:8px;">
-      <button id="nav-cancel-btn" class="btn-secondary">Cancel</button>
-      <button id="nav-go-btn" class="btn-primary" style="flex:1;">Start Navigation</button>
-    </div>
-  </div>
-</div>
-
-<!-- Favorites modal -->
+<!-- FAVORITES MODAL -->
 <div id="favs-modal">
-  <div class="modal-body">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h3 style="font-weight:800;">Saved Locations</h3>
-      <button id="favs-close-btn" class="card-close">&times;</button>
+    <div class="glass-panel modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-weight: 800;">Saved Locations</h3>
+            <button id="favs-close-btn" class="card-close">✕</button>
+        </div>
+        <div id="favs-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="fav-item" onclick="quickNavFav('Home')">
+                <div><strong>Home</strong><br><span style="font-size:0.75rem; color:var(--text-sub)">Tap to navigate</span></div>
+                <button class="btn-primary" style="padding: 6px 14px; font-size: 0.75rem;">Go</button>
+            </div>
+            <div class="fav-item" onclick="quickNavFav('Work')">
+                <div><strong>Work</strong><br><span style="font-size:0.75rem; color:var(--text-sub)">Tap to navigate</span></div>
+                <button class="btn-primary" style="padding: 6px 14px; font-size: 0.75rem;">Go</button>
+            </div>
+        </div>
     </div>
-    <div id="favs-list" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-      <div class="fav-item" onclick="quickNavFav('Home')">
-        <div><strong>Home</strong><br><span style="font-size:0.75rem; color:var(--text-sub);">Tap to navigate</span></div>
-        <button class="btn-primary" style="padding:6px 14px; font-size:0.75rem;">Go</button>
-      </div>
-      <div class="fav-item" onclick="quickNavFav('Work')">
-        <div><strong>Work</strong><br><span style="font-size:0.75rem; color:var(--text-sub);">Tap to navigate</span></div>
-        <button class="btn-primary" style="padding:6px 14px; font-size:0.75rem;">Go</button>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Emergency SOS modal -->
+<!-- EMERGENCY SOS MODAL -->
 <div id="sos-modal">
-  <div class="modal-body">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h3 style="font-weight:800; color:#ef4444;">Emergency Assistance</h3>
-      <button id="sos-close-btn" class="card-close">&times;</button>
+    <div class="glass-panel modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-weight: 800; color: #ef4444;">Emergency Assistance</h3>
+            <button id="sos-close-btn" class="card-close">✕</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="sos-item" onclick="quickSearch('Hospital')">
+                <div><strong>Nearest Hospital</strong></div>
+                <span style="color:#60a5fa; font-weight:700;">Find</span>
+            </div>
+            <div class="sos-item" onclick="quickSearch('Police Station')">
+                <div><strong>Police Station</strong></div>
+                <span style="color:#60a5fa; font-weight:700;">Find</span>
+            </div>
+        </div>
     </div>
-    <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
-      <div class="sos-item" onclick="quickSearch('Hospital')">
-        <div><strong>Nearest Hospital</strong></div>
-        <span style="color:#60a5fa; font-weight:700;">Find</span>
-      </div>
-      <div class="sos-item" onclick="quickSearch('Police Station')">
-        <div><strong>Police Station</strong></div>
-        <span style="color:#60a5fa; font-weight:700;">Find</span>
-      </div>
-      <div class="sos-item" onclick="quickSearch('Garage Repair')">
-        <div><strong>Vehicle Recovery & Garage</strong></div>
-        <span style="color:#60a5fa; font-weight:700;">Find</span>
-      </div>
-      <div class="sos-item" onclick="quickSearch('Petrol Station')">
-        <div><strong>Petrol Station</strong></div>
-        <span style="color:#60a5fa; font-weight:700;">Find</span>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Scripts -->
 <script>
 const TOKEN = "pk.eyJ1IjoiY2Nhc3NpbmdlbmEiLCJhIjoiY21wNnNwN3dxMDJ2bjJwczlrM2VqYng4ZSJ9.nBfFJdM7J3aNhAhPawLS8w";
 mapboxgl.accessToken = TOKEN;
 
 const COLORS = {
-  free: "#22c55e",
-  paid: "#f97316",
-  timed: "#facc15",
-  restricted: "#ef4444",
-  hgv: "#8b5cf6",
-  roadwork: "#f97316",
-  ev: "#06b6d4"
+    free: "#22c55e",
+    paid: "#f97316",
+    timed: "#facc15",
+    restricted: "#ef4444",
+    hgv: "#8b5cf6",
+    roadwork: "#f97316",
+    ev: "#06b6d4"
 };
 
-let map, playerMarker, playerCoords, currentHeading = 0, watchId = null;
-let destMarker = null, destCoords = null;
-let navActive = false, navModeOn = false, hgvModeActive = false;
+let map = null;
+let playerMarker = null;
+let playerCoords = null;
+let watchId = null;
+let destMarker = null;
+let destCoords = null;
+let navActive = false;
+let hgvModeActive = false;
 let activeRouteGeoJSON = null;
-let lastFetchedCenter = null;
 let cachedParkingFeatures = [];
-let roadworkMarkers = [];
 let activeFilter = "all";
+let selectedCardCoords = null;
+let selectedCardName = "";
 
-// Voice recognition
-let recognition = null;
-let isListening = false;
-let continuousVoiceMode = false;
-let isSpeaking = false;
-let restartVoiceTimeout = null;
-
-// AI Memory
-let aiMemory = {
-  lastDestinationName: null,
-  lastDestinationCoords: null,
-  searchResults: [],
-  currentIndex: 0,
-  requestedType: 'any',
-  isMuted: false,
-  smartArrivalTriggered: false
-};
-
-/* Utility functions */
-
-function initMap(center) {
-  map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/dark-v11',
-    center: center,
-    zoom: 16,
-    pitch: 0,
-    bearing: 0
-  });
-  map.on('load', () => {
-    // Add parking source & layers
-    map.addSource('parking-data', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] }
-    });
-    Object.keys(COLORS).forEach(status => {
-      map.addLayer({
-        id: `layer-${status}`,
-        type: 'line',
-        source: 'parking-data',
-        filter: ['==', ['get', 'status'], status],
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': COLORS[status],
-          'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 7],
-          'line-opacity': 0.85
-        }
-      });
-      // Hover & click events
-      map.on('mouseenter', `layer-${status}`, () => map.getCanvas().style.cursor='pointer');
-      map.on('mouseleave', `layer-${status}`, () => map.getCanvas().style.cursor='');
-      map.on('click', `layer-${status}`, (e) => {
-        if (!e.features.length) return;
-        showParkingDetails(e.features[0], e.lngLat.toArray());
-      });
-    });
-    // Roadwork dashed layer
-    map.addLayer({
-      id: 'layer-roadwork-dash',
-      type: 'line',
-      source: 'parking-data',
-      filter: ['==', ['get', 'status'], 'roadwork'],
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: {
-        'line-color': '#ffffff',
-        'line-width': 3,
-        'line-dasharray': [1,2],
-        'line-opacity': 0.9
-      }
-    });
-    placePlayerMarker(center);
-    debounceUpdateParking();
-  });
-  map.on('moveend', () => {
-    clearTimeout(fetchDebounce);
-    fetchDebounce = setTimeout(debounceUpdateParking, 300);
-  });
-}
-
-/* Core functions */
-
-function placePlayerMarker(coords, heading=0) {
-  if (playerMarker) { playerMarker.remove(); }
-  const el = document.createElement('div');
-  el.className = 'player-marker';
-  if (navActive) {
-    el.innerHTML = `<div class="player-pulse"></div><div class="player-dot"></div>`;
-  } else {
-    el.innerHTML = `<div class="player-dot"></div>`;
-  }
-  playerMarker = new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(map);
-  if (navActive) {
-    el.style.transform = `rotate(${heading}deg)`;
-  }
-  playerCoords = coords;
-}
-
-function updateMarkerPosition(coords, heading=0) {
-  if (playerMarker) { playerMarker.setLngLat(coords); }
-  if (navActive) {
-    const el = document.querySelector('.player-marker');
-    if (el) el.style.transform = `rotate(${heading}deg)`;
-  }
-  playerCoords = coords;
-}
-
-function startNavigation() {
-  if (!destCoords) {
-    alert("Please select a destination first");
-    return;
-  }
-  navActive = true;
-  navModeOn = true;
-  updateMarkerPosition(playerCoords, currentHeading);
-  document.getElementById('nav-panel').classList.add('show');
-  document.getElementById('parking-card').classList.remove('show');
-  document.getElementById('top-bar').classList.add('hidden');
-  document.getElementById('route-status').classList.add('show');
-  setParkingLayersVisibility(false);
-  if (map) {
-    map.easeTo({ pitch: 55, zoom: 18, duration: 1000 });
-  }
-  if (navigator.geolocation) {
-    watchId = navigator.geolocation.watchPosition(pos => {
-      const coords = [pos.coords.longitude, pos.coords.latitude];
-      const heading = pos.coords.heading || 0;
-      const snapped = snapToRoute(coords, heading);
-      updateMarkerPosition(snapped.snappedCoords, snapped.heading);
-      if (map) {
-        map.easeTo({ center: snapped.snappedCoords, bearing: snapped.heading, duration: 800 });
-      }
-    }, err => { console.warn(err); }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });
-  }
-}
-
-function stopNavigation() {
-  navActive = false;
-  navModeOn = false;
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-  updateMarkerPosition(playerCoords, currentHeading);
-  clearRoute();
-  removeDestMarker();
-  document.getElementById('route-status').classList.remove('show');
-  document.getElementById('top-bar').classList.remove('hidden');
-  setParkingLayersVisibility(true);
-  if (map) {
-    map.easeTo({ pitch: 0, zoom: 16, duration: 1000 });
-  }
-}
-
-/* Map helpers */
-
-function setParkingLayersVisibility(visible) {
-  const visibility = visible ? 'visible' : 'none';
-  Object.keys(COLORS).forEach(status => {
-    const layerId = `layer-${status}`;
-    if (map.getLayer(layerId))
-      map.setLayoutProperty(layerId, 'visibility', visibility);
-  });
-  if (map.getLayer('layer-roadwork-dash'))
-    map.setLayoutProperty('layer-roadwork-dash', 'visibility', visibility);
-  roadworkMarkers.forEach(m => m.getElement().style.display=visible?'flex':'none');
-}
-
-let debounceUpdateParkingTimeout = null;
-function debounceUpdateParking() {
-  if (debounceUpdateParkingTimeout) clearTimeout(debounceUpdateParkingTimeout);
-  debounceUpdateParkingTimeout = setTimeout(updateParkingData, 500);
-}
-
-async function updateParkingData() {
-  if (!map) return;
-  const center = map.getCenter();
-  const zoom = map.getZoom();
-  if (lastFetchedCenter) {
-    const dist = calculateDistanceMiles([lastFetchedCenter.lng, lastFetchedCenter.lat], [center.lng, center.lat]);
-    if (dist < 0.25) return;
-  }
-  lastFetchedCenter = { lng: center.lng, lat: center.lat };
-  document.getElementById('loader').classList.add('show');
-  const features = await fetchOverpassParkingAtCoords([center.lng, center.lat], 1200);
-  document.getElementById('loader').classList.remove('show');
-  if (features) {
-    // Assign distances
-    const origin = playerCoords || [center.lng, center.lat];
-    features.forEach(f => {
-      let coords = null;
-      if (f.geometry.type === 'Point') coords = f.geometry.coordinates;
-      else if (f.geometry.type === 'LineString') coords = f.geometry.coordinates[Math.floor(f.geometry.coordinates.length/2)];
-      else if (f.geometry.type === 'Polygon') coords = f.geometry.coordinates[0][0];
-      f._distMiles = coords ? calculateDistanceMiles(origin, coords) : 999;
-    });
-    cachedParkingFeatures = features;
-    renderSidePanel();
-    // Update map layer
-    const geojson = { type: 'FeatureCollection', features: features };
-    if (map.getSource('parking-data')) {
-      map.getSource('parking-data').setData(geojson);
-    }
-    renderRoadworkMarkers(features.filter(f => f.properties.status==='roadwork'));
-  }
-}
-
-async function fetchOverpassParkingAtCoords(center, radiusMeters) {
-  const query = `[out:json][timeout:10];(way(around:${radiusMeters},${center[1]},${center[0]})[highway];way(around:${radiusMeters},${center[1]},${center[0]})[amenity=parking];);out geom tags;`;
-  try {
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      body: "data=" + encodeURIComponent(query)
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const results = [];
-    data.elements.forEach(el => {
-      const tags = el.tags || {};
-      const status = classifyParking(tags);
-      if (status==='restricted') return;
-      if (el.geometry && el.geometry.length>=2) {
-        results.push({
-          type: "Feature",
-          properties: {
-            status: status,
-            name: formatRoadName(tags),
-            maxstay: tags.maxstay || "No Limit",
-            fee: tags.fee || "None"
-          },
-          geometry: { type: "LineString", coordinates: el.geometry.map(p=>[p.lon,p.lat]) }
+function jumpToLocation(coords) {
+    document.getElementById("home").classList.add("hidden");
+    document.getElementById("ui").classList.add("visible");
+    if (!map) {
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: coords,
+            zoom: 16
         });
-      }
-    });
-    return results;
-  } catch(e) { return []; }
-}
-
-/* Utility: Calculate distance (miles) */
-function calculateDistanceMiles(coord1, coord2) {
-  if (!coord1 || !coord2) return 9999;
-  const R = 3958.8;
-  const dLat = (coord2[1]-coord1[1])*Math.PI/180;
-  const dLon = (coord2[0]-coord1[0])*Math.PI/180;
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(coord1[1]*Math.PI/180)*Math.cos(coord2[1]*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
-  const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/* Classify parking based on tags */
-function classifyParking(tags) {
-  if (tags.highway==='construction' || tags.construction || tags.barrier==='road_works' || tags.roadwork==='yes' || tags['work:type']) return 'roadwork';
-  if (tags.amenity==='charging_station') return 'ev';
-  const yellowLines = (
-    tags['parking:lane:both']==='no_parking' || 
-    tags['parking:lane:left']==='no_parking' || 
-    tags['parking:lane:right']==='no_parking' ||
-    tags['parking:condition:both']==='no_parking' ||
-    tags['restriction']==='no_parking' ||
-    tags['waiting_restrictions']==='yes'
-  );
-  if (tags.hgv==='designated' || tags.hgv==='yes' || tags.truck==='yes' || tags['parking:hgv']==='yes' || tags['parking:hgv']==='designated' || tags['hgv:parking']==='yes' || tags['amenity']==='truck_parking') return 'hgv';
-  if (yellowLines) return 'restricted';
-  if (tags.fee==='yes' || tags['parking:lane:both']==='paid') return 'paid';
-  if (tags.maxstay || tags['parking:condition:both']==='timed') return 'timed';
-  if (['motorway','trunk','primary'].includes(tags.highway) || tags.access==='private' || tags.parking==='private') return 'restricted';
-  return 'free';
-}
-
-function formatRoadName(tags) {
-  if (tags.name) return tags.name;
-  if (tags.ref) return tags.ref;
-  if (tags.highway) {
-    return tags.highway.charAt(0).toUpperCase() + tags.highway.slice(1).replace('_',' ') + " Road";
-  }
-  return "Street Parking";
-}
-
-/* Render side panel parking list */
-function renderSidePanel() {
-  const container = document.getElementById('side-panel-content');
-  container.innerHTML = '';
-  if (!cachedParkingFeatures || cachedParkingFeatures.length===0) {
-    container.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found.</div>`;
-    return;
-  }
-  let filtered = cachedParkingFeatures;
-  if (activeFilter !== 'all') {
-    filtered = cachedParkingFeatures.filter(f=>f.properties.status===activeFilter);
-  }
-  if (filtered.length===0) {
-    container.innerHTML = `<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
-    return;
-  }
-  filtered.sort((a,b)=>a._distMiles - b._distMiles);
-  const topFeatures = filtered.slice(0,15);
-  topFeatures.forEach(feat => {
-    const props = feat.properties;
-    const status = props.status;
-    const color = COLORS[status] || COLORS.free;
-    const distLabel = feat._distMiles<0.1 ? `${Math.round(feat._distMiles*1760)} yd` : `${feat._distMiles.toFixed(2)} mi`;
-    const card = document.createElement('div');
-    card.className='parking-item-card';
-    card.innerHTML= `
-      <div class="item-top">
-        <span class="item-title">${props.name}</span>
-        <span class="item-dist">${distLabel}</span>
-      </div>
-      <div class="item-bottom">
-        <span class="item-badge" style="background:${color}"></span>
-        <span>${status.toUpperCase()}</span>
-      </div>
-    `;
-    card.addEventListener('click', () => {
-      let flyCoords = null;
-      if (feat.geometry && feat.geometry.coordinates) {
-        if (feat.geometry.type==='Point') flyCoords=feat.geometry.coordinates;
-        else if (feat.geometry.type==='LineString') flyCoords=feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length/2)];
-        else if (feat.geometry.type==='Polygon') flyCoords=feat.geometry.coordinates[0][0];
-      }
-      showParkingDetails(feat, flyCoords);
-      if (flyCoords && map) {
-        map.flyTo({ center: flyCoords, zoom:17 });
-      }
-    });
-    container.appendChild(card);
-  });
-}
-
-/* Show parking details card */
-function showParkingDetails(feat, coords) {
-  const props = feat.properties || {};
-  const status = props.status || 'free';
-  document.getElementById('card-title').textContent=props.name || 'Street Parking';
-  document.getElementById('card-type').textContent= status.toUpperCase() + ' PARKING ZONE';
-  document.getElementById('card-maxstay').textContent=props.maxstay || 'No Limit';
-  document.getElementById('card-fee').textContent=props.fee || 'None';
-  document.getElementById('card-score').textContent=calculateParkingScore(feat);
-  // Badge styling
-  const badge = document.getElementById('card-status-badge');
-  badge.textContent= status.toUpperCase();
-  badge.style.background=COLORS[status]+'40';
-  badge.style.color=COLORS[status];
-  badge.style.border=`1px solid ${COLORS[status]}`;
-  // Save selected for navigation
-  selectedCardCoords=coords;
-  selectedCardName=props.name || 'Street Parking';
-  document.getElementById('parking-card').classList.add('show');
-  document.getElementById('nav-panel').classList.remove('show');
-}
-
-/* Routing */
-
-async function fetchRoute(from, to) {
-  const coords = `${from[0]},${from[1]};${to[0]},${to[1]}`;
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&overview=full&access_token=${TOKEN}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.routes && data.routes.length>0) {
-      return { drive: data.routes[0], walk: null };
+    } else {
+        map.flyTo({ center: coords, zoom: 16.5 });
     }
-  } catch(e) {}
-  return { drive: null, walk: null };
 }
 
-function drawRoute(geojson) {
-  if (!map) return;
-  activeRouteGeoJSON=geojson;
-  if (map.getSource('route')) {
-    map.getSource('route').setData({ type: 'Feature', geometry: geojson });
-  } else {
-    map.addSource('route', { type: 'geojson', data: { type:'Feature', geometry: geojson } });
-    map.addLayer({
-      id: 'route-bg',
-      type: 'line',
-      source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#0284c7', 'line-width': 12, 'line-opacity': 0.7 }
-    });
-    map.addLayer({
-      id: 'route-line',
-      type: 'line',
-      source: 'route',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#38bdf8', 'line-width': 7, 'line-opacity': 1 }
-    });
-  }
-}
-
-function clearRoute() {
-  if (map && map.getSource('route')) {
-    map.removeLayer('route-line');
-    map.removeLayer('route-bg');
-    map.removeSource('route');
-  }
-  activeRouteGeoJSON = null;
-}
-
-async function startRoutingToCoords(coords, name) {
-  const origin = playerCoords || [ -0.1276, 51.5072 ];
-  placeDestMarker(coords);
-  document.getElementById('nav-dest-name').textContent= name;
-  document.getElementById('loader').classList.add('show');
-  const route = await fetchRoute(origin, coords);
-  document.getElementById('loader').classList.remove('show');
-  if (route.drive || route.walk) {
-    if (route.drive) {
-      drawRoute(route.drive.geometry);
-      document.getElementById('nav-car-dist').textContent = (route.drive.distance*0.000621371).toFixed(1)+' mi';
-      document.getElementById('nav-car-time').textContent= Math.round(route.drive.duration/60)+' mins';
-    }
-    if (route.walk) {
-      document.getElementById('nav-walk-time').textContent= Math.round(route.walk.duration/60)+' mins';
-    }
-    // Fit bounds
-    const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend(origin);
-    bounds.extend(coords);
-    map.fitBounds(bounds, { padding: 80 });
-    document.getElementById('parking-card').classList.remove('show');
-    document.getElementById('nav-panel').classList.add('show');
-    document.getElementById('dest-bar').classList.remove('show');
-  } else {
-    alert('Unable to calculate route');
-  }
-}
-
-/* Snap to route calculation */
-function snapToRoute(coords, heading) {
-  if (!navActive || !activeRouteGeoJSON || !turf) return { snappedCoords: coords, heading: heading };
-  try {
-    const line = turf.lineString(activeRouteGeoJSON.coordinates);
-    const pt = turf.point(coords);
-    const snapped = turf.nearestPointOnLine(line, pt);
-    const snappedCoords = snapped.geometry.coordinates;
-    const aheadPoint = turf.along(line, snapped.properties.location + 0.015, { units: 'kilometers' });
-    let newHeading = turf.bearing(snapped, aheadPoint);
-    if (newHeading<0) newHeading+=360;
-    // Smart arrival trigger
-    const distToDest = destCoords ? calculateDistanceMiles(snappedCoords, destCoords) : 999;
-    if (distToDest<0.2 && !aiMemory.smartArrivalTriggered) {
-      aiMemory.smartArrivalTriggered=true;
-      speak('You are approaching your destination. Scanning for live parking.');
-      executeIntelligentParkingSearch('Current Location', aiMemory.requestedType);
-    }
-    return { snappedCoords, heading: newHeading };
-  } catch(e) { return { snappedCoords: coords, heading: heading }; }
-}
-
-function placeDestMarker(coords) {
-  if (destMarker) { destMarker.remove(); }
-  const el = document.createElement('div');
-  el.className='dest-pin';
-  destMarker=new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(map);
-  destCoords=coords;
-}
-
-function removeDestMarker() {
-  if (destMarker) { destMarker.remove(); destMarker=null; destCoords=null; }
-}
-
-/* Fetch directions for routing */
-async function fetchRoute(from, to) {
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${from[0]},${from[1]};${to[0]},${to[1]}?geometries=geojson&overview=full&access_token=${TOKEN}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.routes && data.routes.length) {
-      return { drive: data.routes[0], walk: null };
-    }
-  } catch(e) {}
-  return { drive: null, walk: null };
-}
-
-/* Show parking details card */
-function showParkingDetails(feat, coords) {
-  const props=feat.properties || {};
-  const status=props.status || 'free';
-  document.getElementById('card-title').textContent=props.name||'Street Parking';
-  document.getElementById('card-type').textContent= status.toUpperCase()+' PARKING ZONE';
-  document.getElementById('card-maxstay').textContent=props.maxstay||'No Limit';
-  document.getElementById('card-fee').textContent=props.fee||'None';
-  document.getElementById('card-score').textContent=calculateParkingScore(feat);
-  const badge=document.getElementById('card-status-badge');
-  badge.textContent=status.toUpperCase();
-  badge.style.background=COLORS[status]+'40';
-  badge.style.color=COLORS[status];
-  badge.style.border=`1px solid ${COLORS[status]}`;
-  selectedCardCoords=coords;
-  selectedCardName=props.name || 'Street Parking';
-  document.getElementById('parking-card').classList.add('show');
-  document.getElementById('nav-panel').classList.remove('show');
-}
-
-/* Calculate parking score (0-100) */
-function calculateParkingScore(feat) {
-  let score=70;
-  const props=feat.properties || {};
-  const status=props.status || 'free';
-  const dist=feat._distMiles || 0.5;
-  if (status==='free') score+=25;
-  if (status==='paid') score+=5;
-  if (status==='timed') score+=10;
-  if (status==='restricted') score-=30;
-  if (dist<0.2) score+=10;
-  else if (dist>1.0) score-=15;
-  score=Math.max(10, Math.min(99, score));
-  return score+'/100';
-}
-
-/* Render side panel parking list */
-function renderSidePanel() {
-  const container=document.getElementById('side-panel-content');
-  container.innerHTML='';
-  if (!cachedParkingFeatures || cachedParkingFeatures.length===0) {
-    container.innerHTML=`<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found.</div>`;
-    return;
-  }
-  let filtered=cachedParkingFeatures;
-  if (activeFilter!=='all') filtered=filtered.filter(f=>f.properties.status===activeFilter);
-  if (filtered.length===0) {
-    container.innerHTML=`<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
-    return;
-  }
-  filtered.sort((a,b)=>a._distMiles - b._distMiles);
-  const topFeatures=filtered.slice(0,15);
-  topFeatures.forEach(feat => {
-    const props=feat.properties;
-    const status=props.status;
-    const color=COLORS[status] || COLORS.free;
-    const distLabel=feat._distMiles<0.1 ? `${Math.round(feat._distMiles*1760)} yd` : `${feat._distMiles.toFixed(2)} mi`;
-    const card=document.createElement('div');
-    card.className='parking-item-card';
-    card.innerHTML= `
-      <div class="item-top">
-        <span class="item-title">${props.name}</span>
-        <span class="item-dist">${distLabel}</span>
-      </div>
-      <div class="item-bottom">
-        <span class="item-badge" style="background:${color}"></span>
-        <span>${status.toUpperCase()}</span>
-      </div>
-    `;
-    card.addEventListener('click', ()=> {
-      let flyCoords=null;
-      if (feat.geometry && feat.geometry.coordinates) {
-        if (feat.geometry.type==='Point') flyCoords=feat.geometry.coordinates;
-        else if (feat.geometry.type==='LineString') flyCoords=feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length/2)];
-        else if (feat.geometry.type==='Polygon') flyCoords=feat.geometry.coordinates[0][0];
-      }
-      showParkingDetails(feat, flyCoords);
-      if (flyCoords && map) map.flyTo({ center: flyCoords, zoom:17 });
-    });
-    container.appendChild(card);
-  });
-}
-
-/* Render roadwork markers */
-function renderRoadworkMarkers(features) {
-  clearRoadworkMarkers();
-  if (!map || navActive) return;
-  features.forEach(feat => {
-    let coords=null;
-    if (feat.geometry.type==='LineString') coords=feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length/2)];
-    if (!coords) return;
-    const el=document.createElement('div');
-    el.className='roadwork-marker-badge';
-    el.title= (feat.properties.name || 'Roadwork') + ' - Live Roadwork';
-    el.innerHTML= `<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>`;
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      showParkingDetails(feat, coords);
-    });
-    const marker=new mapboxgl.Marker({ element:el }).setLngLat(coords).addTo(map);
-    roadworkMarkers.push(marker);
-  });
-}
-
-/* Show parking details card */
-function showParkingDetails(feat, coords) {
-  const props=feat.properties||{};
-  const status=props.status||'free';
-  document.getElementById('card-title').textContent=props.name||'Street Parking';
-  document.getElementById('card-type').textContent= status.toUpperCase()+' PARKING ZONE';
-  document.getElementById('card-maxstay').textContent=props.maxstay||'No Limit';
-  document.getElementById('card-fee').textContent=props.fee||'None';
-  document.getElementById('card-score').textContent=calculateParkingScore(feat);
-  const badge=document.getElementById('card-status-badge');
-  badge.textContent=status.toUpperCase();
-  badge.style.background=COLORS[status]+'40';
-  badge.style.color=COLORS[status];
-  badge.style.border=`1px solid ${COLORS[status]}`;
-  selectedCardCoords=coords;
-  selectedCardName=props.name||'Street Parking';
-  document.getElementById('parking-card').classList.add('show');
-  document.getElementById('nav-panel').classList.remove('show');
-}
-
-/* Utility for live search */
 function quickSearch(query) {
-  document.getElementById('home-input').value=query;
-  document.getElementById('map-input').value=query;
-  executeIntelligentParkingSearch(query, 'any');
+    document.getElementById("home-input").value = query;
+    document.getElementById("map-input").value = query;
+    jumpToLocation([-0.1276, 51.5072]);
 }
+
 function quickNavFav(name) {
-  document.getElementById('favs-modal').classList.remove('show');
-  speak(`Finding parking near ${name}`);
-  executeIntelligentParkingSearch(name, 'any');
+    document.getElementById("favs-modal").classList.remove("show");
+    jumpToLocation([-0.1276, 51.5072]);
 }
 
-/* Search & Geocoding */
-async function fetchPlaces(query) {
-  const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
-  const url=`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${origin[0]},${origin[1]}&country=gb&types=poi,address,neighborhood,locality,postcode&autocomplete=true&limit=10`;
-  try {
-    const res=await fetch(url);
-    const data=await res.json();
-    const features = data.features || [];
-    features.forEach(f => {
-      const c = f.center || (f.geometry?f.geometry.coordinates:null);
-      f._centerCoords=c;
-      f._distMiles= c ? calculateDistanceMiles(origin, c) : 9999;
-    });
-    // Relevance sorting
-    if (query.length<4 || query.toLowerCase().startsWith('tesco')) {
-      features.sort((a,b)=>a._distMiles - b._distMiles);
-    }
-    return features;
-  } catch(e) { return []; }
-}
-
-function hideDropdowns() {
-  document.querySelectorAll('.search-dropdown').forEach(d => { d.classList.remove('show'); d.innerHTML=''; });
-}
-
-async function renderDropdown(ddId, inputId, query) {
-  const dropdown=document.getElementById(ddId);
-  if (!query.trim()) { dropdown.classList.remove('show'); return; }
-  const feats=await fetchPlaces(query);
-  if (!feats.length) { dropdown.classList.remove('show'); return; }
-  dropdown.innerHTML='';
-  feats.forEach(f => {
-    const item=document.createElement('div');
-    item.className='dropdown-item';
-    const titleRow=document.createElement('div');
-    titleRow.className='dropdown-title-row';
-    const title=document.createElement('span');
-    title.className='dropdown-title';
-    title.textContent= f.text || f.place_name;
-    const distTag=document.createElement('span');
-    distTag.className='dropdown-distance';
-    if (f._distMiles<0.1) distTag.textContent= `${Math.round(f._distMiles*1760)} yd`;
-    else if (f._distMiles<999) distTag.textContent= `${f._distMiles.toFixed(1)} mi`;
-    titleRow.appendChild(title);
-    if (distTag.textContent) titleRow.appendChild(distTag);
-    const sub=document.createElement('span');
-    sub.className='dropdown-subtitle';
-    sub.textContent=f.place_name;
-    item.appendChild(titleRow);
-    item.appendChild(sub);
-    item.addEventListener('click', ()=> {
-      document.getElementById(inputId).value=f.text || f.place_name;
-      hideDropdowns();
-      if (ddId==='dest-dropdown') {
-        startRoutingToCoords(f._centerCoords || f.center, f.text || f.place_name);
-      } else {
-        jumpToLocation(f._centerCoords || f.center);
-      }
-    });
-    dropdown.appendChild(item);
-  });
-  dropdown.classList.add('show');
-}
-
-/* Map navigation functions */
-function jumpToLocation(coords) {
-  if (!coords || coords.length<2) return;
-  document.getElementById('home').classList.add('hidden');
-  document.getElementById('ui').classList.add('visible');
-  if (!map) {
-    initMap(coords);
-  } else {
-    map.flyTo({ center: coords, zoom:16.5, pitch:0, essential:true });
-    debounceUpdateParking();
-  }
-}
-async function startRoutingToCoords(coords, name) {
-  const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
-  placeDestMarker(coords);
-  document.getElementById('rs-main-text').textContent='Calculating route...';
-  document.getElementById('loader').classList.add('show');
-  const route=await fetchRoute(origin, coords);
-  document.getElementById('loader').classList.remove('show');
-  if (route.drive || route.walk) {
-    if (route.drive) {
-      drawRoute(route.drive.geometry);
-      document.getElementById('nav-car-dist').textContent= (route.drive.distance*0.000621371).toFixed(1)+' mi';
-      document.getElementById('nav-car-time').textContent= Math.round(route.drive.duration/60)+' mins';
-    }
-    if (route.walk) {
-      document.getElementById('nav-walk-time').textContent= Math.round(route.walk.duration/60)+' mins';
-    }
-    // fit bounds
-    const bounds=new mapboxgl.LngLatBounds();
-    bounds.extend(origin);
-    bounds.extend(coords);
-    map.fitBounds(bounds, { padding:80 });
-    document.getElementById('parking-card').classList.remove('show');
-    document.getElementById('nav-panel').classList.add('show');
-    document.getElementById('dest-bar').classList.remove('show');
-  } else {
-    alert('Unable to calculate route');
-  }
-}
-
-/* Parking scoring */
-function calculateParkingScore(feat) {
-  let score=70;
-  const p=feat.properties || {};
-  const status=p.status || 'free';
-  const dist=feat._distMiles || 0.5;
-  if (status==='free') score+=25;
-  if (status==='paid') score+=5;
-  if (status==='timed') score+=10;
-  if (status==='restricted') score-=30;
-  if (dist<0.2) score+=10;
-  else if (dist>1.0) score-=15;
-  score=Math.max(10, Math.min(99, score));
-  return score+'/100';
-}
-
-/* Render side panel parking list - called on data update */
-function renderSidePanel() {
-  const container=document.getElementById('side-panel-content');
-  container.innerHTML='';
-  if (!cachedParkingFeatures || cachedParkingFeatures.length===0) {
-    container.innerHTML=`<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No parking zones found.</div>`;
-    return;
-  }
-  let filtered=cachedParkingFeatures;
-  if (activeFilter!=='all') filtered=filtered.filter(f=>f.properties.status===activeFilter);
-  if (filtered.length===0) {
-    container.innerHTML=`<div style="font-size:0.72rem; color:var(--text-sub); text-align:center; padding:10px;">No ${activeFilter.toUpperCase()} zones nearby.</div>`;
-    return;
-  }
-  filtered.sort((a,b)=>a._distMiles - b._distMiles);
-  const topFeatures=filtered.slice(0,15);
-  topFeatures.forEach(feat => {
-    const props=feat.properties;
-    const status=props.status;
-    const color=COLORS[status] || COLORS.free;
-    const distLabel=feat._distMiles<0.1 ? `${Math.round(feat._distMiles*1760)} yd` : `${feat._distMiles.toFixed(2)} mi`;
-    const card=document.createElement('div');
-    card.className='parking-item-card';
-    card.innerHTML= `
-      <div class="item-top">
-        <span class="item-title">${props.name}</span>
-        <span class="item-dist">${distLabel}</span>
-      </div>
-      <div class="item-bottom">
-        <span class="item-badge" style="background:${color}"></span>
-        <span>${status.toUpperCase()}</span>
-      </div>
-    `;
-    card.addEventListener('click', ()=> {
-      let flyCoords=null;
-      if (feat.geometry && feat.geometry.coordinates) {
-        if (feat.geometry.type==='Point') flyCoords=feat.geometry.coordinates;
-        else if (feat.geometry.type==='LineString') flyCoords=feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length/2)];
-        else if (feat.geometry.type==='Polygon') flyCoords=feat.geometry.coordinates[0][0];
-      }
-      showParkingDetails(feat, flyCoords);
-      if (flyCoords && map) map.flyTo({ center: flyCoords, zoom:17 });
-    });
-    container.appendChild(card);
-  });
-}
-
-/* Clear roadwork markers */
-function clearRoadworkMarkers() {
-  roadworkMarkers.forEach(m => m.remove());
-  roadworkMarkers=[];
-}
-function renderRoadworkMarkers(feats) {
-  clearRoadworkMarkers();
-  if (!map || navActive) return;
-  feats.forEach(feat => {
-    let coords=null;
-    if (feat.geometry.type==='LineString') coords=feat.geometry.coordinates[Math.floor(feat.geometry.coordinates.length/2)];
-    if (!coords) return;
-    const el=document.createElement('div');
-    el.className='roadwork-marker-badge';
-    el.title= (feat.properties.name || 'Roadwork') + ' - Live Roadwork';
-    el.innerHTML= `<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>`;
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showParkingDetails(feat, coords);
-    });
-    const marker=new mapboxgl.Marker({ element:el }).setLngLat(coords).addTo(map);
-    roadworkMarkers.push(marker);
-  });
-}
-
-/* Show parking details card */
-function showParkingDetails(feat, coords) {
-  const props=feat.properties||{};
-  const status=props.status||'free';
-  document.getElementById('card-title').textContent=props.name||'Street Parking';
-  document.getElementById('card-type').textContent= status.toUpperCase()+' PARKING ZONE';
-  document.getElementById('card-maxstay').textContent=props.maxstay||'No Limit';
-  document.getElementById('card-fee').textContent=props.fee||'None';
-  document.getElementById('card-score').textContent=calculateParkingScore(feat);
-  const badge=document.getElementById('card-status-badge');
-  badge.textContent= status.toUpperCase();
-  badge.style.background=COLORS[status]+'40';
-  badge.style.color=COLORS[status];
-  badge.style.border=`1px solid ${COLORS[status]}`;
-  selectedCardCoords=coords;
-  selectedCardName=props.name||'Street Parking';
-  document.getElementById('parking-card').classList.add('show');
-  document.getElementById('nav-panel').classList.remove('show');
-}
-
-/* Utility: fetch places (geocode) */
-async function fetchPlaces(query) {
-  const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276,51.5072]);
-  const url=`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${origin[0]},${origin[1]}&country=gb&types=poi,address,neighborhood,locality,postcode&autocomplete=true&limit=10`;
-  try {
-    const res=await fetch(url);
-    const data=await res.json();
-    const feats = data.features || [];
-    feats.forEach(f => {
-      const c=f.center || (f.geometry ? f.geometry.coordinates : null);
-      f._centerCoords=c;
-      f._distMiles= c ? calculateDistanceMiles(origin, c) : 9999;
-    });
-    if (query.length<4 || query.toLowerCase().startsWith('tesco')) {
-      feats.sort((a,b)=>a._distMiles - b._distMiles);
-    }
-    return feats;
-  } catch(e) { return []; }
-}
-
-/* Search dropdown rendering */
-async function showDropdown(dropdownId, inputId, query) {
-  const dropdown=document.getElementById(dropdownId);
-  if (!query.trim()) { dropdown.classList.remove('show'); return; }
-  const feats=await fetchPlaces(query);
-  if (!feats.length) { dropdown.classList.remove('show'); return; }
-  dropdown.innerHTML='';
-  feats.forEach(f => {
-    const item=document.createElement('div');
-    item.className='dropdown-item';
-    const titleRow=document.createElement('div');
-    titleRow.className='dropdown-title-row';
-    const title=document.createElement('span');
-    title.className='dropdown-title';
-    title.textContent= f.text || f.place_name;
-    const distTag=document.createElement('span');
-    distTag.className='dropdown-distance';
-    if (f._distMiles<0.1) distTag.textContent= `${Math.round(f._distMiles*1760)} yd`;
-    else if (f._distMiles<999) distTag.textContent= `${f._distMiles.toFixed(1)} mi`;
-    titleRow.appendChild(title);
-    if (distTag.textContent) titleRow.appendChild(distTag);
-    const sub=document.createElement('span');
-    sub.className='dropdown-subtitle';
-    sub.textContent=f.place_name;
-    item.appendChild(titleRow);
-    item.appendChild(sub);
-    item.addEventListener('click', ()=> {
-      document.getElementById(inputId).value=f.text || f.place_name;
-      hideDropdowns();
-      if (dropdownId==='dest-dropdown') {
-        startRoutingToCoords(f._centerCoords || f.center, f.text || f.place_name);
-      } else {
-        jumpToLocation(f._centerCoords || f.center);
-      }
-    });
-    dropdown.appendChild(item);
-  });
-  dropdown.classList.add('show');
-}
-
-/* Map jump & route start */
-function jumpToLocation(coords) {
-  if (!coords || coords.length<2) return;
-  document.getElementById('home').classList.add('hidden');
-  document.getElementById('ui').classList.add('visible');
-  if (!map) {
-    initMap(coords);
-  } else {
-    map.flyTo({ center: coords, zoom: 16.5, pitch: 0, essential: true });
-    debounceUpdateParking();
-  }
-}
-async function startRoutingToCoords(coords, name) {
-  const origin = playerCoords || (map ? map.getCenter().toArray() : [-0.1276, 51.5072]);
-  placeDestMarker(coords);
-  document.getElementById('rs-main-text').textContent='Calculating route...';
-  document.getElementById('loader').classList.add('show');
-  const route=await fetchRoute(origin, coords);
-  document.getElementById('loader').classList.remove('show');
-  if (route.drive || route.walk) {
-    if (route.drive) {
-      drawRoute(route.drive.geometry);
-      document.getElementById('nav-car-dist').textContent= (route.drive.distance*0.000621371).toFixed(1)+' mi';
-      document.getElementById('nav-car-time').textContent= Math.round(route.drive.duration/60)+' mins';
-    }
-    if (route.walk) {
-      document.getElementById('nav-walk-time').textContent= Math.round(route.walk.duration/60)+' mins';
-    }
-    // fit bounds
-    const bounds=new mapboxgl.LngLatBounds();
-    bounds.extend(origin);
-    bounds.extend(coords);
-    map.fitBounds(bounds, { padding:80 });
-    document.getElementById('parking-card').classList.remove('show');
-    document.getElementById('nav-panel').classList.add('show');
-    document.getElementById('dest-bar').classList.remove('show');
-  } else {
-    alert('Unable to calculate route');
-  }
-}
-
-/* Voice assistant setup */
-async function initVoice() {
-  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-    console.warn('Voice recognition not supported');
-    return;
-  }
-  if (recognition) return;
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  recognition.continuous=false;
-  recognition.interimResults=false;
-  recognition.lang='en-US';
-
-  recognition.onstart= ()=> {
-    isListening=true;
-    updateVoiceBubble('','Listening...');
-    document.querySelectorAll('.mic-btn').forEach(b=>b.classList.add('listening'));
-  };
-  recognition.onresult= (e) => {
-    const transcript=e.results[0][0].transcript;
-    updateVoiceBubble('','Thinking...');
-    handleVoiceInput(transcript);
-  };
-  recognition.onerror= (e) => {
-    console.warn(e.error);
-    isListening=false;
-    document.querySelectorAll('.mic-btn').forEach(b=>b.classList.remove('listening'));
-    autoRestartVoice();
-  };
-  recognition.onend= ()=> {
-    isListening=false;
-    document.querySelectorAll('.mic-btn').forEach(b=>b.classList.remove('listening'));
-    autoRestartVoice();
-  };
-}
-function autoRestartVoice() {
-  if (continuousVoiceMode && !isSpeaking) {
-    clearTimeout(restartVoiceTimeout);
-    restartVoiceTimeout=setTimeout(()=> {
-      if (continuousVoiceMode && !isListening && !isSpeaking) {
-        try { recognition.start(); } catch(e) {}
-      }
-    }, 1000);
-  }
-}
-function toggleVoice() {
-  if (!recognition) initVoice();
-  if (!recognition) {
-    alert('Voice recognition not supported');
-    return;
-  }
-  if (continuousVoiceMode) {
-    disableVoice();
-  } else {
-    continuousVoiceMode=true;
-    try { recognition.start(); } catch(e) {}
-    speak('I am listening. Where would you like to park?');
-  }
-}
-function disableVoice(msg='') {
-  continuousVoiceMode=false;
-  clearTimeout(restartVoiceTimeout);
-  if (recognition) try { recognition.stop(); } catch(e) {}
-  hideVoiceBubble();
-  if (msg) speak(msg);
-}
-function speak(text) {
-  if (!('speechSynthesis' in window) || aiMemory.isMuted) return;
-  window.speechSynthesis.cancel();
-  isSpeaking=true;
-  updateVoiceBubble('','Speaking...');
-  const utter=new SpeechSynthesisUtterance(text);
-  utter.rate=1.0;
-  utter.onend= ()=> {
-    isSpeaking=false;
-    if (continuousVoiceMode) autoRestartVoice();
-    else hideVoiceBubble();
-  };
-  utter.onerror= ()=> { isSpeaking=false; if (continuousVoiceMode) autoRestartVoice(); };
-  window.speechSynthesis.speak(utter);
-}
-function updateVoiceBubble(icon,text) {
-  const bubble=document.getElementById('voice-status-bubble');
-  document.getElementById('voice-status-icon').textContent=icon;
-  document.getElementById('voice-status-text').textContent=text;
-  bubble.classList.add('show');
-}
-function hideVoiceBubble() {
-  document.getElementById('voice-status-bubble').classList.remove('show');
-}
-async function handleVoiceInput(transcript) {
-  const text=transcript.toLowerCase();
-  // Basic intent parser
-  if (text.includes('stop listening') || text.includes('exit voice') || text.includes('goodbye') || text.includes('disable voice') || text.includes('turn off voice')) {
-    disableVoice('Goodbye! Safe driving.');
-    return;
-  }
-  if (text.includes('stop navigation') || text.includes('cancel route') || text.includes('end navigation')) {
-    stopNavigation();
-    speak('Stopping navigation.');
-    return;
-  }
-  if (text.includes('mute voice') || text.includes('mute assistant')) {
-    aiMemory.isMuted=true; updateVoiceBubble('','Muted');
-    return;
-  }
-  if (text.includes('unmute voice') || text.includes('unmute assistant')) {
-    aiMemory.isMuted=false; speak('Voice unmuted');
-    return;
-  }
-  if (text.includes('repeat') || text.includes('say again')) {
-    speak(document.getElementById('rs-main-text').textContent || 'Continuing on route');
-    return;
-  }
-  if (text.includes('eta') || text.includes('remaining time') || text.includes('share eta')) {
-    const time=document.getElementById('rs-sub-text').textContent || '10 mins';
-    const dist=document.getElementById('nav-car-dist').textContent || '2 miles';
-    speak(`Estimated time of arrival is in ${time}, distance ${dist}`);
-    return;
-  }
-  if (text.includes('find fuel') || text.includes('gas station')) {
-    speak('Searching for nearby petrol stations');
-    quickSearch('Petrol Station');
-    return;
-  }
-  if (text.includes('find coffee') || text.includes('starbucks') || text.includes('cafe')) {
-    speak('Searching for nearby cafes');
-    quickSearch('Coffee');
-    return;
-  }
-  if (text.includes('find toilet') || text.includes('restroom') || text.includes('toilets')) {
-    speak('Searching for public toilets');
-    quickSearch('Public Toilets');
-    return;
-  }
-  if (text.includes('find food') || text.includes('restaurant') || text.includes('mcdonalds')) {
-    speak('Searching for nearby restaurants');
-    quickSearch('Food');
-    return;
-  }
-  if (text.includes('find charging') || text.includes('ev charger')) {
-    speak('Searching for EV charging stations');
-    quickSearch('EV Charging Station');
-    return;
-  }
-  if (text.includes('find supermarket') || text.includes('tesco') || text.includes('sainsbury')) {
-    speak('Searching for supermarkets');
-    quickSearch('Supermarket');
-    return;
-  }
-  if (text.includes('take me home') || text.includes('go home')) {
-    speak('Navigating to Home');
-    quickNavFav('Home');
-    return;
-  }
-  if (text.includes('take me to work') || text.includes('go to work')) {
-    speak('Navigating to Work');
-    quickNavFav('Work');
-    return;
-  }
-  if (text.includes('show another') || text.includes('next') || text.includes('show next') || text.includes('other option') || text.includes('second one')) {
-    // Show next parking option
-    if (aiMemory.searchResults.length>1) {
-      aiMemory.currentIndex=(aiMemory.currentIndex+1)%aiMemory.searchResults.length;
-      announceSelectedParkingOption();
-    } else {
-      speak('No other options.');
-    }
-    return;
-  }
-  if (text.includes('closer') || text.includes('find closer')) {
-    // rerank to closer
-    if (aiMemory.searchResults.length>0) {
-      aiMemory.searchResults.sort((a,b)=>a._distMiles - b._distMiles);
-      aiMemory.currentIndex=0;
-      announceSelectedParkingOption();
-    }
-    return;
-  }
-  if (text.includes('cheaper') || text.includes('free parking') || text.includes('i don\'t mind paying')) {
-    // prefer free
-    if (aiMemory.searchResults.length>0) {
-      aiMemory.searchResults.sort((a,b)=> {
-        const aStatus=a.properties.status;
-        const bStatus=b.properties.status;
-        if (aStatus==='free' && bStatus!=='free') return -1;
-        if (bStatus==='free' && aStatus!=='free') return 1;
-        return a._distMiles - b._distMiles;
-      });
-      aiMemory.currentIndex=0;
-      announceSelectedParkingOption();
-    }
-    return;
-  }
-  // Default: try to match parking or location
-  if (text.includes('parking') || text.includes('need') || text.includes('going to') || text.includes('where can i park') || text.includes('meeting') || text.includes('lorry') || text.includes('hgv')) {
-    // parse preferences
-    let prefType='any';
-    if (text.includes('free') || text.includes('won\'t get a ticket') || text.includes('unrestricted')) prefType='free';
-    else if (text.includes('paid') || text.includes('don\'t mind paying') || text.includes('pay')) prefType='paid';
-    else if (text.includes('lorry') || text.includes('hgv') || text.includes('truck')) prefType='hgv';
-    let query = text
-      .replace(/find free parking near/g,'')
-      .replace(/find paid parking near/g,'')
-      .replace(/find hgv parking near/g,'')
-      .replace(/find parking near/g,'')
-      .replace(/find parking at/g,'')
-      .replace(/i\'m going to/g,'')
-      .replace(/take me to/g,'')
-      .replace(/where can i park near/g,'')
-      .replace(/i need free parking near/g,'')
-      .replace(/i need parking near/g,'')
-      .replace(/find somewhere close to/g,'')
-      .replace(/take me somewhere i won\'t get a ticket near/g,'')
-      .replace(/i\'m meeting someone at/g,'')
-      .replace(/find/g,'')
-      .replace(/parking/g,'')
-      .trim();
-    if (!query && aiMemory.lastDestinationName) query=aiMemory.lastDestinationName;
-    if (query) {
-      speak(`Searching for nearby ${prefType} parking at ${query}`);
-      executeIntelligentParkingSearch(query, prefType);
-    }
-    return;
-  }
-  // fallback
-  if (text.length>2) {
-    executeIntelligentParkingSearch(text, 'any');
-  } else {
-    speak('Sorry, I did not understand. Please try again.');
-  }
-}
-
-/* AI Parking Search */
-async function executeIntelligentParkingSearch(query, requestedType='any') {
-  aiMemory.requestedType=requestedType;
-  let destCoords=[-0.1276,51.5072];
-  let destName=query;
-  if (query && query!=='Current Location') {
-    const geocodes=await fetchPlaces(query);
-    if (geocodes.length>0) {
-      const best=geocodes[0];
-      destCoords=best._centerCoords || best.center;
-      destName=best.text || best.place_name;
-    } else {
-      speak(`Sorry, I couldn't find the location ${query}`);
-      return;
-    }
-  }
-  aiMemory.lastDestinationName=destName;
-  aiMemory.lastDestinationCoords=destCoords;
-  jumpToLocation(destCoords);
-  updateVoiceBubble('','Finding Parking...');
-  const radii=[250,500,750,1000,2000];
-  let candidates=[];
-  for (let r of radii) {
-    const rawFeatures=await fetchOverpassParkingAtCoords(destCoords, r);
-    candidates=rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType);
-    if (candidates.length>0) break;
-  }
-  if (candidates.length===0) {
-    if (requestedType==='free') {
-      speak(`There is no unrestricted free parking within one mile of ${destName}. The closest option is paid parking. Would you like me to take you there instead?`);
-      return executeIntelligentParkingSearch(query,'paid');
-    } else {
-      speak(`I couldn't find suitable parking near ${destName}.`);
-    }
-    return;
-  }
-  aiMemory.searchResults=candidates;
-  aiMemory.currentIndex=0;
-  announceSelectedParkingOption();
-}
-
-/* Ranking & filtering parking options */
-function rankAndFilterParkingOptions(rawFeatures, destCoords, requestedType) {
-  if (!rawFeatures) return [];
-  let candidates=rawFeatures.map(f=> {
-    let coords=null;
-    if (f.geometry.type==='Point') coords=f.geometry.coordinates;
-    else if (f.geometry.type==='LineString') coords=f.geometry.coordinates[Math.floor(f.geometry.coordinates.length/2)];
-    else if (f.geometry.type==='Polygon') coords=f.geometry.coordinates[0][0];
-    const dist=coords ? calculateDistanceMiles(destCoords, coords) : 999;
-    let score=100 - dist*30;
-    const status=f.properties.status;
-    if (status==='free') score+=25;
-    if (status==='paid') score+= (requestedType==='paid'?20:0);
-    if (status==='restricted') score-=60;
-    if (status==='roadwork') score-=80;
-    if (dist<0.2) score+=10;
-    if (dist>1.0) score-=15;
-    score=Math.max(10, Math.min(99, Math.round(score)));
-    return { feat, coords, name: f.properties.name || 'Street Parking', status, distMiles: dist, walkTimeMins: Math.max(1, Math.round(dist*1609.34/80)), score };
-  });
-  if (requestedType==='free') candidates=candidates.filter(c=>c.status==='free');
-  else if (requestedType==='paid') candidates=candidates.filter(c=>c.status==='paid'||c.status==='free');
-  else if (requestedType==='hgv') candidates=candidates.filter(c=>c.status==='hgv');
-  candidates.sort((a,b)=>b.score - a.score || a.distMiles - b.distMiles);
-  return candidates;
-}
-
-/* Announce selected parking option */
-function announceSelectedParkingOption() {
-  const current=aiMemory.searchResults[aiMemory.currentIndex];
-  if (!current) return;
-  showParkingDetails(current.feat, current.coords);
-  placeDestMarker(current.coords);
-  const typeLabel= current.status==='free' ? 'unrestricted free parking' : 'parking location';
-  const distMiles=current.distMiles;
-  const walkTime=current.walkTimeMins;
-  const distStr=distMiles<0.1 ? `${Math.round(distMiles*1760)} yd` : `${distMiles.toFixed(2)} mi`;
-  const walkStr=walkTime ? `${walkTime} min walk` : '';
-  const speech='I found the closest '+typeLabel+'. '+current.name+' is a '+walkStr+' from '+aiMemory.lastDestinationName+', approximately '+distStr+' away. Would you like me to navigate there?';
-  speak(speech);
-}
-
-/* Fetch places (geocoding) */
-async function fetchPlaces(query) {
-  const origin=playerCoords || (map ? map.getCenter().toArray() : [-0.1276,51.5072]);
-  const url=`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${TOKEN}&proximity=${origin[0]},${origin[1]}&country=gb&types=poi,address,neighborhood,locality,postcode&autocomplete=true&limit=10`;
-  try {
-    const res=await fetch(url);
-    const data=await res.json();
-    const feats=data.features || [];
-    feats.forEach(f => {
-      const c=f.center || (f.geometry?f.geometry.coordinates:null);
-      f._centerCoords=c;
-      f._distMiles= c ? calculateDistanceMiles(origin, c) : 9999;
-    });
-    if (query.length<4 || query.toLowerCase().startsWith('tesco')) {
-      feats.sort((a,b)=>a._distMiles - b._distMiles);
-    }
-    return feats;
-  } catch(e) { return []; }
-}
-
-/* UI Event bindings */
-document.addEventListener('DOMContentLoaded', ()=> {
-  initMap([ -0.1276, 51.5072 ]);
-  initVoice();
-  // Search input
-  document.getElementById('home-btn').addEventListener('click', ()=> {
-    const val=document.getElementById('home-input').value;
-    if (val) executeIntelligentParkingSearch(val, 'any');
-  });
-  document.getElementById('map-btn').addEventListener('click', ()=> {
-    const val=document.getElementById('map-input').value;
-    if (val) executeIntelligentParkingSearch(val, 'any');
-  });
-  document.getElementById('home-mic-btn').addEventListener('click', toggleVoice);
-  document.getElementById('map-mic-btn').addEventListener('click', toggleVoice);
-  document.getElementById('side-panel-header').addEventListener('click', ()=> {
-    document.getElementById('parking-side-panel').classList.toggle('collapsed');
-  });
-  document.querySelectorAll('.filter-chip').forEach(c => {
-    c.addEventListener('click', e => {
-      document.querySelectorAll('.filter-chip').forEach(c2=>c2.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      activeFilter=e.currentTarget.getAttribute('data-filter');
-      renderSidePanel();
-    });
-  });
-  document.getElementById('card-close-btn').addEventListener('click', ()=> {
-    document.getElementById('parking-card').classList.remove('show');
-  });
-  document.getElementById('card-nav-btn').addEventListener('click', ()=> {
-    if (selectedCardCoords) startRoutingToCoords(selectedCardCoords, selectedCardName);
-  });
-  document.getElementById('nav-cancel-btn').addEventListener('click', ()=> {
-    document.getElementById('nav-panel').classList.remove('show');
-    clearRoute();
-    removeDestMarker();
-  });
-  document.getElementById('nav-go-btn').addEventListener('click', startNavigation);
-  document.getElementById('rs-end-btn').addEventListener('click', ()=> {
-    stopNavigation();
-  });
-  document.getElementById('locate-btn').addEventListener('click', ()=> {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const coords=[pos.coords.longitude, pos.coords.latitude];
-        updateMarkerPosition(coords);
-        if (map) map.flyTo({ center:coords, zoom:17 });
-      });
-    }
-  });
-  document.getElementById('legend-toggle-btn').addEventListener('click', ()=> {
-    document.getElementById('legend').classList.toggle('hidden-legend');
-  });
-  document.getElementById('hgv-mode-btn').addEventListener('click', ()=> {
-    hgvModeActive=!hgvModeActive;
-    document.getElementById('hgv-mode-btn').classList.toggle('active', hgvModeActive);
-    speak(hgvModeActive ? 'HGV Truck Routing Mode Enabled' : 'Standard Car Routing Enabled');
-  });
-  document.getElementById('favs-btn').addEventListener('click', ()=> {
-    document.getElementById('favs-modal').classList.add('show');
-  });
-  document.getElementById('favs-close-btn').addEventListener('click', ()=> {
-    document.getElementById('favs-modal').classList.remove('show');
-  });
-  document.getElementById('sos-btn').addEventListener('click', ()=> {
-    document.getElementById('sos-modal').classList.add('show');
-  });
-  document.getElementById('sos-close-btn').addEventListener('click', ()=> {
-    document.getElementById('sos-modal').classList.remove('show');
-  });
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("open-map-btn").addEventListener("click", () => jumpToLocation([-0.1276, 51.5072]));
+    document.getElementById("home-locate-btn").addEventListener("click", () => jumpToLocation([-0.1276, 51.5072]));
+    document.getElementById("favs-btn").addEventListener("click", () => document.getElementById("favs-modal").classList.add("show"));
+    document.getElementById("favs-close-btn").addEventListener("click", () => document.getElementById("favs-modal").classList.remove("show"));
+    document.getElementById("sos-btn").addEventListener("click", () => document.getElementById("sos-modal").classList.add("show"));
+    document.getElementById("sos-close-btn").addEventListener("click", () => document.getElementById("sos-modal").classList.remove("show"));
 });
 </script>
 </body>
